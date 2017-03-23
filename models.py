@@ -42,7 +42,7 @@ class magento_task(models.Model):
         # check config and do nothing if it's missing some parameter
         if not config.domain or \
            not config.port or \
-           not contig.user or \
+           not config.user or \
            not config.key or \
            not config.protocol or \
            not config.journal or \
