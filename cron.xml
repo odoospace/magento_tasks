@@ -8,8 +8,8 @@
             <field name="interval_type">minutes</field>
             <field name="numbercall">-1</field>
             <field eval="False" name="doall"/>
-            <field eval="'magento.task'" name="model"/>
-            <field eval="'sync_orders_from_magento'" name="function"/>
+            <field eval="magento.task" name="model"/>
+            <field eval="sync_orders_from_magento" name="function"/>
         </record>
 
    </data>
