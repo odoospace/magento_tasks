@@ -44,9 +44,7 @@ class magento_task(models.Model):
            not config.port or \
            not config.user or \
            not config.key or \
-           not config.protocol or \
-           not config.journal or \
-           not config.journal_refund:
+           not config.protocol:
            return
 
         print 'Fetching magento orders...'
