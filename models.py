@@ -53,8 +53,5 @@ class magento_task(models.Model):
         m = MagentoAPI(config.domain, config.port, config.user, config.key, config.protocol)
         orders = m.sales_order.list({'created_at': {'from': date.today().strftime('%Y-%m-%d')}})
 
-        journal_sale = self.env['account.journal'].search([('name', '=', config.journal)])
-        journal_refund = self.env['account.journal'].search([('name', '=', config.journal_refund)])
-
         for order in orders:
             print order
