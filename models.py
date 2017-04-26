@@ -48,7 +48,7 @@ class magento_task(models.Model):
         #method to create a delivery or invoice address given magento address data
         
         address_data = {}
-        address_data['name'] = data['name'] + ' ' + data['lastname']
+        address_data['name'] = data['firstname'] + ' ' + data['lastname']
         address_data['street'] = data['street']
         address_data['city'] = data['city']
         address_data['zip'] = data['postcode']
@@ -65,7 +65,7 @@ class magento_task(models.Model):
         res = self.env['res.partner'].create(address_data)
 
         #create syncid reference
-        res_syncid = create_syncid_data(res, address_data['customer_address_id'])
+        res_syncid = self.create_syncid_data(res, data['address_id'])
 
         return res
 
@@ -74,7 +74,7 @@ class magento_task(models.Model):
         #method to create basic partner data
         #TODO: maybe add more accurate data in address
         address_data = {}
-        address_data['name'] = data['customer_name'] + ' ' + data['customer_lastname']
+        address_data['name'] = data['customer_firstname'] + ' ' + data['customer_lastname']
         # address_data['street'] = data['street']
         # address_data['city'] = data['city']
         # address_data['zip'] = data['postcode']
@@ -85,7 +85,7 @@ class magento_task(models.Model):
 
         res = self.env['res.partner'].create(address_data)
 
-        res_syncid = create_syncid_data(res, data['customer_id'])
+        res_syncid = self.create_syncid_data(res, data['customer_id'])
 
         return res
 
@@ -105,14 +105,16 @@ class magento_task(models.Model):
         #testing
         print 'Fetching magento orders...'
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-        orders = m.sales_order.list({'created_at': {'from': date.today().strftime('%Y-%m-%d')}})
+        # orders = m.sales_order.list({'created_at': {'from': date.today().strftime('%Y-%m-%d')}})
 
-        for order in orders:
-            print order
+        # for order in orders:
+        #     print order
         #END testing
 
 
-        S_IVA21S = self.env['account.tax'].search([('description', '=', 'S_IVA21S')])
+        S_IVA_21S = self.env['account.tax'].search([('description', '=', 'S_IVA21S')])
+        PRODUCT_UOM = self.env['product.uom'].search([('id','=',1)]).id
+
         #first get de date range to check orders
         #TODO: today minus 10 days for safe check
         order_filter = {'created_at':{'from': date.today().strftime('%Y-%m-%d')}}
@@ -135,7 +137,10 @@ class magento_task(models.Model):
 
 
         #processing sale orders:
+        print 'Total orders to process', len(orders_to_process)
+
         for i in orders_to_process:
+            print 'Processing...', i
             #fetching order info
             order = m.sales_order.info({'increment_id': i[4:]})
 
@@ -144,27 +149,27 @@ class magento_task(models.Model):
 
             #TODO:partner
             m_customer_id = order['customer_id']
-            syncid_customer = self.env['syncid.reference'].search(['source','=',1],['model','=',80],['source_id','=',m_customer_id])
+            syncid_customer = self.env['syncid.reference'].search([('source','=',1),('model','=',80),('source_id','=',m_customer_id)])
             if syncid_customer:
                 o_customer_id = syncid_customer[0].odoo_id
             else:
-                o_customer_id = create_partner(order)
+                o_customer_id = self.create_partner(order).id
 
             #TODO:billing
             m_billing_address_id = order['billing_address_id']
-            syncid_billing = self.env['syncid.reference'].search(['source','=',1],['model','=',80],['source_id','=',m_billing_address_id])
+            syncid_billing = self.env['syncid.reference'].search([('source','=',1),('model','=',80),('source_id','=',m_billing_address_id)])
             if syncid_billing:
                 o_billing_id = syncid_customer[0].odoo_id
             else:
-                o_billing_id = create_partner_address(order['billing_address'], o_customer_id)
+                o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id).id
             
             #TODO:shipping
             m_shipping_addess_id = order['shipping_address_id']
-            syncid_shipping = self.env['sync_d.reference'].search(['source','=',1],['model','=',80],['source_id','=',m_shipping_addess_id])
+            syncid_shipping = self.env['syncid.reference'].search([('source','=',1),('model','=',80),('source_id','=',m_shipping_addess_id)])
             if syncid_shipping:
                 o_shipping_id = syncid_customer[0].odoo_id
             else:
-                o_shipping_id = create_partner_address(order['shipping_address'], o_customer_id)
+                o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id).id
 
             
             #Create sale order:
@@ -180,16 +185,21 @@ class magento_task(models.Model):
             #Create sale order lines data:
             for line in order['items']:
                 saleorder_line_data = {}
-                saleorder_line_data['order_id'] = o_saleorder
+                saleorder_line_data['order_id'] = o_saleorder.id
 
-                syncid_product = self.env['syncid.reference'].search(['source','=',1],['model','=',191],['source_id','=',line['product_id']])
-                if syncid_product:
-                    product = self.env['product.product'].search(['id', '=', syncid_product[0].id])
+                product = self.env['product.product'].search([('default_code', '=', line['sku'])])
+                if product:
                     saleorder_line_data['product_id'] = product.id
+                else:
+                    saleorder_line_data['product_id'] = 15414 #sync-error product
                 
                 saleorder_line_data['name'] = line['name']
+                saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
-                saleorder_line_data['price_unit'] =float(line['base_original_price'])
+                if line['base_original_price']:
+                    saleorder_line_data['price_unit'] = float(line['base_original_price'])
+                else:
+                    saleorder_line_data['price_unit'] = 0
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
@@ -197,20 +207,22 @@ class magento_task(models.Model):
             #check cod_fee & shipment fee and add it as products
             if order['cod_fee']:
                 saleorder_line_data = {}
-                saleorder_line_data['order_id'] = o_saleorder
+                saleorder_line_data['order_id'] = o_saleorder.id
                 saleorder_line_data['name'] = 'Contrarembolso'
+                saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['product_id'] = 15413 #product 'gastos de envio'
                 saleorder_line_data['product_uom_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['cod_fee'])
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
-            if order['shipping_ammount']:
+            if order['shipping_amount']:
                 saleorder_line_data = {}
-                saleorder_line_data['order_id'] = o_saleorder
+                saleorder_line_data['order_id'] = o_saleorder.id
+                saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['name'] = 'Gastos de envio'
                 saleorder_line_data['product_id'] = 15413 #product 'gastos de envio'
                 saleorder_line_data['product_uom_qty'] = 1
-                saleorder_line_data['price_unit'] = float(order['shipping_ammount'])
+                saleorder_line_data['price_unit'] = float(order['shipping_amount'])
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
