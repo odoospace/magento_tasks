@@ -21,7 +21,7 @@
     'version': '9.0.0.2',
 
     # any module necessary for this one to work correctly
-    'depends': ['sale', 'account', 'account_voucher', 'base'],
+    'depends': ['sale', 'account', 'base'],
 
     # always loaded
     'data': [

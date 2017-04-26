@@ -57,9 +57,9 @@ class magento_task(models.Model):
         address_data['active'] = True
         address_data['customer'] = False
         address_data['parent_id'] = partner_id
-        if data['address_type'] == 'billing'
+        if data['address_type'] == 'billing':
             address_data['type'] = 'invoice'
-        elif data['address_type'] == 'shipping'
+        elif data['address_type'] == 'shipping':
             address_data['type'] = 'delivery'
 
         res = self.env['res.partner'].create(address_data)
@@ -104,7 +104,7 @@ class magento_task(models.Model):
 
         #testing
         print 'Fetching magento orders...'
-        m = MagentoAPI(config.domain, config.port, config.user, config.key, config.protocol)
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         orders = m.sales_order.list({'created_at': {'from': date.today().strftime('%Y-%m-%d')}})
 
         for order in orders:
@@ -115,7 +115,7 @@ class magento_task(models.Model):
         S_IVA21S = self.env['account.tax'].search([('description', '=', 'S_IVA21S')])
         #first get de date range to check orders
         #TODO: today minus 10 days for safe check
-        order_filter = {'created_at':{'from':'2017-04-26 00:00:00'}}
+        order_filter = {'created_at':{'from': date.today().strftime('%Y-%m-%d')}}
 
         #fetch a list of magent orders from date
         orders = m.sales_order.list(order_filter)
@@ -144,7 +144,7 @@ class magento_task(models.Model):
 
             #TODO:partner
             m_customer_id = order['customer_id']
-            syncid_customer = self.env['sync_id.reference'].search(['source','=',1],['model','=',80],['source_id','=',m_customer_id])
+            syncid_customer = self.env['syncid.reference'].search(['source','=',1],['model','=',80],['source_id','=',m_customer_id])
             if syncid_customer:
                 o_customer_id = syncid_customer[0].odoo_id
             else:
@@ -152,7 +152,7 @@ class magento_task(models.Model):
 
             #TODO:billing
             m_billing_address_id = order['billing_address_id']
-            syncid_billing = self.env['sync_id.reference'].search(['source','=',1],['model','=',80],['source_id','=',m_billing_address_id])
+            syncid_billing = self.env['syncid.reference'].search(['source','=',1],['model','=',80],['source_id','=',m_billing_address_id])
             if syncid_billing:
                 o_billing_id = syncid_customer[0].odoo_id
             else:
@@ -160,7 +160,7 @@ class magento_task(models.Model):
             
             #TODO:shipping
             m_shipping_addess_id = order['shipping_address_id']
-            syncid_shipping = self.env['sync_id.reference'].search(['source','=',1],['model','=',80],['source_id','=',m_shipping_addess_id])
+            syncid_shipping = self.env['sync_d.reference'].search(['source','=',1],['model','=',80],['source_id','=',m_shipping_addess_id])
             if syncid_shipping:
                 o_shipping_id = syncid_customer[0].odoo_id
             else:
@@ -182,7 +182,7 @@ class magento_task(models.Model):
                 saleorder_line_data = {}
                 saleorder_line_data['order_id'] = o_saleorder
 
-                syncid_product = self.env['sync_id.reference'].search(['source','=',1],['model','=',191],['source_id','=',line['product_id']])
+                syncid_product = self.env['syncid.reference'].search(['source','=',1],['model','=',191],['source_id','=',line['product_id']])
                 if syncid_product:
                     product = self.env['product.product'].search(['id', '=', syncid_product[0].id])
                     saleorder_line_data['product_id'] = product.id
