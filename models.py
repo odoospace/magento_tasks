@@ -130,10 +130,13 @@ class magento_task(models.Model):
 
         #check which sale orders are allready imported in odoo
         orders_to_process = []
+        orders_to_update = []
         for i in m_orders_list:
             o_saleorder = self.env['sale.order'].search([('name', '=', i)])
             if not o_saleorder:
                 orders_to_process.append(i)
+            else:
+                orders_to_update.append(i)
 
 
         #processing sale orders:
@@ -226,3 +229,21 @@ class magento_task(models.Model):
                 saleorder_line_data['price_unit'] = float(order['shipping_amount'])
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
+
+            #adding payment_mode_id
+            if order['payment']:
+                payment_method = self.env['account.payment.mode'].search([('name','=', order['payment']['method'])])
+                # print payment_method, order['payment']['method']
+                if payment_method:
+                    o_saleorder.payment_mode_id = payment_method[0]
+
+            #adding order comments:
+            if order['status_history']:
+                note = '===============================\n'
+                for j in order['status_history']:
+                    note += 'created_at: '+ j['created_at']
+                    note += '\nentity_name: '+ j['entity_name']
+                    note += '\nstatus: '+ j['status']
+                    note += '\n===============================\n'
+
+                o_saleorder.note = note
