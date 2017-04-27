@@ -244,7 +244,7 @@ class magento_task(models.Model):
                     note += 'created_at: '+ j['created_at']
                     note += '\nentity_name: '+ j['entity_name']
                     note += '\nstatus: '+ j['status']
-                    note += '\ncomment:'+ j['comment']
+                    note += '\ncomment:'+ str(j['comment'])
                     note += '\n===============================\n'
 
                 o_saleorder.note = note
