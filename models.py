@@ -49,7 +49,7 @@ class magento_task(models.Model):
         
         address_data = {}
         address_data['name'] = data['firstname'] + ' ' + data['lastname']
-        address_data['street'] = data['street']
+        address_data['street'] = data['street'].replace("\n", " ")
         address_data['city'] = data['city']
         address_data['zip'] = data['postcode']
         address_data['phone'] = data['telephone']
@@ -66,6 +66,7 @@ class magento_task(models.Model):
 
         #create syncid reference
         res_syncid = self.create_syncid_data(res, data['address_id'])
+        self.env.cr.commit()
 
         return res
 
@@ -86,7 +87,8 @@ class magento_task(models.Model):
         res = self.env['res.partner'].create(address_data)
 
         res_syncid = self.create_syncid_data(res, data['customer_id'])
-
+        self.env.cr.commit()
+        
         return res
 
     @api.model
