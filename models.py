@@ -34,6 +34,8 @@ class dict2obj(dict):
 class magento_task(models.Model):
     _name = 'magento.task'
 
+    #SALEORDERS
+    #SALEORDERS
     @api.model
     def create_syncid_data(self, odoo_id, magento_id):
         syncid_data = {}
@@ -88,7 +90,7 @@ class magento_task(models.Model):
 
         res_syncid = self.create_syncid_data(res, data['customer_id'])
         self.env.cr.commit()
-        
+
         return res
 
     @api.model
@@ -250,3 +252,43 @@ class magento_task(models.Model):
                     note += '\n===============================\n'
 
                 o_saleorder.note = note
+
+    #PRODUCT BRAND
+    #PRODUCT BRAND
+    @api.model
+    def sync_brands_from_magento(self):
+        reload(sys)
+        sys.setdefaultencoding("utf-8")
+
+        # check config and do nothing if it's missing some parameter
+        if not config.domain or \
+           not config.port or \
+           not config.user or \
+           not config.key or \
+           not config.protocol:
+           return
+
+        #testing
+        print 'Fetching magento brands...'
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+
+        magento_brands = m.catalog_product_attribute.info('manufacturer')['options']
+        for b in magento_brands:
+            reference = self.env['syncid.reference'].search([('model', '=', 329), ('source', '=', 1), ('source_id', '=' ,b['value'])])
+
+            if not reference:
+                #create brand and syncid
+                print 'creating new brand!', b['label']
+                data = {
+                    'name': b['label'],
+                }
+                o_brand = self.env['product.brand'].create(data)
+
+                data_sync = {
+                    'model': 329,
+                    'source': 1,
+                    'odoo_id': o_brand.id,
+                    'source_id': b['value']
+                }
+                o_syncidreference = self.env['syncid.reference'].create(data_sync)
+
