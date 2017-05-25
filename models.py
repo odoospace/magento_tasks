@@ -292,3 +292,69 @@ class magento_task(models.Model):
                 }
                 o_syncidreference = self.env['syncid.reference'].create(data_sync)
 
+    #PRODUCT CATEGORY
+    #PRODUCT CATEGORY
+    @api.model
+    def sync_categorys_from_magento(self):
+        reload(sys)
+        sys.setdefaultencoding("utf-8")
+
+        # check config and do nothing if it's missing some parameter
+        if not config.domain or \
+           not config.port or \
+           not config.user or \
+           not config.key or \
+           not config.protocol:
+           return
+
+        def read_children(item):
+            if item.has_key('children'):
+                #print 'item', item['name'], item['category_id']
+                categories[int(item['category_id'])] = {
+                    'id': int(item['category_id']),
+                    'name': item['name'],
+                    'parent': int(item['parent_id']),
+                    'item': item
+                }
+                read_category(item['children'], item)
+
+        def read_category(data, parent=None):
+            if type(data) is list:
+                for item in data:
+                    read_children(item)
+            else:
+                read_children(data)
+
+        #testing
+        print 'Fetching magento categorys...'
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+
+        # read categories
+        categories = {}
+        read_category(m.catalog_category.tree())
+
+        # sync categories in Odoo
+        for i in sorted([i for i in categories.keys()]):
+            # check syncid referente before creation
+            reference = self.env['syncid.reference'].search([('model', '=', 184), ('source', '=', 1), ('source_id', '=', i)])
+            if len(reference) > 1:
+                raise SystemExit('Category with many references: %s', categories[i]['name'])
+            if not reference:
+                data = {
+                    'name': categories[i]['name'],
+                    'active': True,
+                }
+                if categories[i]['parent']:
+                    data['parent_id'] = self.env['syncid.reference'].search([('model', '=', 184), ('source', '=', 1), ('source_id', '=', categories[i]['parent'])])[0].odoo_id
+                print '**', categories[i]['id'], categories[i]['name'], categories[i]['parent'], data
+                category_id = self.env['product.category'].create(data)
+
+                data_sync = {
+                    'model': 184,
+                    'source': 1,
+                    'odoo_id': category_id.id,
+                    'source_id': i
+                }
+                sync_id = self.env['syncid.reference'].create(data_sync)
+                print 'new category...', categories[i]['name'], sync_id
+            
