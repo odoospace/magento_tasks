@@ -392,7 +392,7 @@ class magento_task(models.Model):
             # print 1
             reference = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('source_id', '=' ,p['product_id'])])
             # print 2
-            if not reference:
+            if not reference and p['type'] == 'simple':
                 #create product and syncid
                 print 'creating new product!', p['name']
                 print 3
@@ -427,7 +427,7 @@ class magento_task(models.Model):
                 if pp['manufacturer']:
                     product_brand_id = self.env['syncid.reference'].search([('model', '=', 329), ('source', '=', 1), ('source_id', '=', pp['manufacturer'])])
                     if product_brand_id:
-                        data['product_brand_id'] = product_brand_id.id
+                        data['product_brand_id'] = product_brand_id.odoo_id
 
                 print 7
                 o_product = self.env['product.template'].create(data)
