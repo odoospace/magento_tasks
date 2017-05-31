@@ -12,10 +12,9 @@
         saleorders
         product brands aka manufactureres in magento
         product categorys
+        products
 
         odoo -> magento:
-
-
         
     """,
 
@@ -26,7 +25,7 @@
     # Check https://github.com/odoo/odoo/blob/master/openerp/addons/base/module/module_data.xml
     # for the full list
     'category': 'Association',
-    'version': '9.0.0.4',
+    'version': '9.0.0.5',
 
     # any module necessary for this one to work correctly
     'depends': ['sale', 'account', 'base'],

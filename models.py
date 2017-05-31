@@ -358,3 +358,87 @@ class magento_task(models.Model):
                 sync_id = self.env['syncid.reference'].create(data_sync)
                 print 'new category...', categories[i]['name'], sync_id
             
+    #PRODUCT SYNC
+    #PRODUCT SYNC
+    @api.model
+    def sync_products_from_magento(self):
+        reload(sys)
+        sys.setdefaultencoding("utf-8")
+
+        # check config and do nothing if it's missing some parameter
+        if not config.domain or \
+           not config.port or \
+           not config.user or \
+           not config.key or \
+           not config.protocol:
+           return
+
+        #testing
+        print 'Fetching magento products...'
+
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        
+        magento_filter = {'product_id':{'from':31227}}
+        
+        magento_products = m.catalog_product.list(magento_filter)
+        
+        print 'working...'
+        con = 1
+        for p in magento_products:
+            print p['product_id']
+            if con % 500 == 0:
+                print 'Syncing magento products (%s - %s)' % (con, len(magento_products))
+            con +=1
+            # print 1
+            reference = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('source_id', '=' ,p['product_id'])])
+            # print 2
+            if not reference:
+                #create product and syncid
+                print 'creating new product!', p['name']
+                print 3
+                pp = m.catalog_product.info(p['product_id'])
+                print 4
+
+                categ_ids = []
+                categ_id = None
+                for i in pp['category_ids']:
+                    if i not in ['169']: # error in magento database
+                        print 5
+                        category = self.env['syncid.reference'].search([('model', '=', 184), ('source', '=', 1), ('source_id', '=', str(i))])
+                        print 6
+                        if len(category) > 1:
+                            raise SystemExit('Product with many categories in syncid: %s' % pp['name'])
+                        elif category:
+                            categ_ids.append((6, 0, [category[0].odoo_id]))
+                            categ_id = category[0].odoo_id
+
+                data = {
+                    'default_code': pp['sku'],
+                    'name': pp['name'],
+                    'sale_ok': True,
+                    'purchase_ok': True,
+                    'type': 'product',
+                    'list_price': pp['price'],
+                    'extra_price': pp['special_price'],
+                    'categ_ids': categ_ids,
+                    'categ_id': categ_id or 1,
+                }
+
+                if pp['manufacturer']:
+                    product_brand_id = self.env['syncid.reference'].search([('model', '=', 329), ('source', '=', 1), ('source_id', '=', pp['manufacturer'])])
+                    if product_brand_id:
+                        data['product_brand_id'] = product_brand_id.id
+
+                print 7
+                o_product = self.env['product.template'].create(data)
+                print 8
+                data_sync = {
+                    'model': 190,
+                    'source': 1,
+                    'odoo_id': o_product.id,
+                    'source_id': pp['product_id'],
+                }
+                print 9
+                sync_id = self.env['syncid.reference'].create(data_sync)
+                print 'FINISH'
+                
