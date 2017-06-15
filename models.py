@@ -48,7 +48,8 @@ class ProductTemplate(models.Model):
                 if 'extra_price' in vals:
                     data['special_price'] = vals['extra_price'] or self.extra_price
                 m.catalog_product.update(syncid[0].source_id, data)
-        return
+                
+        return result
 
 
 
