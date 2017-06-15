@@ -30,7 +30,7 @@ class dict2obj(dict):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
-class ProductTemplate(modls.Model):
+class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
 
@@ -39,17 +39,16 @@ class ProductTemplate(modls.Model):
         result = super(ProductTemplate, self).write(vals)
 
         data = {}
-        if vals['list_price'] or vals['extra_price']:
-            syncid = self.env['suncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('odoo_id', '=', self.id)])
+        if 'list_price' in vals or 'extra_price' in vals:
+            syncid = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('odoo_id', '=', self.id)])
             if syncid and len(syncid) == 1:
-                
                 m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-                data['price'] = vals['list_price'] or self.list_price
-                data['special_price'] = vals['extra_price'] or self.extra_price
-                m.catalog_product.update(syncid[0].source_id,{
-                    'price': vals['list_price',
-                    'special_price': vals['special_price']
-                    })
+                if 'list_price' in vals:
+                    data['price'] = vals['list_price']
+                if 'extra_price' in vals:
+                    data['special_price'] = vals['extra_price'] or self.extra_price
+                m.catalog_product.update(syncid[0].source_id, data)
+        return
 
 
 
