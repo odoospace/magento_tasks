@@ -30,6 +30,29 @@ class dict2obj(dict):
     def __setstate__(self, state):
         self.__dict__.update(state)
 
+class ProductTemplate(modls.Model):
+    _inherit = 'product.template'
+
+
+    @api.multi
+    def write(self, vals):
+        result = super(ProductTemplate, self).write(vals)
+
+        data = {}
+        if vals['list_price'] or vals['extra_price']:
+            syncid = self.env['suncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('odoo_id', '=', self.id)])
+            if syncid and len(syncid) == 1:
+                
+                m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+                data['price'] = vals['list_price'] or self.list_price
+                data['special_price'] = vals['extra_price'] or self.extra_price
+                m.catalog_product.update(syncid[0].source_id,{
+                    'price': vals['list_price',
+                    'special_price': vals['special_price']
+                    })
+
+
+
 # task to schedule
 class magento_task(models.Model):
     _name = 'magento.task'
