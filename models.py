@@ -130,8 +130,6 @@ class magento_task(models.Model):
             181: '50', #Zaragoza
         }
 
-
-
         address_data = {}
         address_data['name'] = data['firstname'] + ' ' + data['lastname']
         address_data['street'] = data['street'].replace("\n", " ")
@@ -201,7 +199,9 @@ class magento_task(models.Model):
 
         #testing
         print 'Fetching magento orders...'
-        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
+        
         # orders = m.sales_order.list({'created_at': {'from': date.today().strftime('%Y-%m-%d')}})
 
         # for order in orders:
@@ -346,6 +346,35 @@ class magento_task(models.Model):
 
                 o_saleorder.note = note
 
+        print 'Total orders to update', len(orders_to_update)
+
+        for i in orders_to_update:
+
+            print 'Processing...', i
+
+            #checking sale order
+            odoo_order = self.env['sale.order'].search([('name', '=', i),('state', '=', 'draft')])
+            if odoo_order:
+                #updating history...
+                order = m.sales_order.info({'increment_id': i[4:]})
+                if order['status_history']:
+                    note = '===============================\n'
+                    for j in order['status_history']:
+                        note += 'created_at: '+ j['created_at']
+                        note += '\nentity_name: '+ j['entity_name']
+                        note += '\nstatus: '+ j['status']
+                        note += '\ncomment:'+ str(j['comment'])
+                        note += '\n===============================\n'
+
+                    if order.note != note:
+                        order.note = note
+
+
+            #fetching order info
+            
+
+
+
     #PRODUCT BRAND
     #PRODUCT BRAND
     @api.model
@@ -363,8 +392,9 @@ class magento_task(models.Model):
 
         #testing
         print 'Fetching magento brands...'
-        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-
+        #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
+        
         magento_brands = m.catalog_product_attribute.info('manufacturer')['options']
         for b in magento_brands:
             reference = self.env['syncid.reference'].search([('model', '=', 329), ('source', '=', 1), ('source_id', '=' ,b['value'])])
@@ -420,8 +450,9 @@ class magento_task(models.Model):
 
         #testing
         print 'Fetching magento categorys...'
-        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-
+        #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
+        
         # read categories
         categories = {}
         read_category(m.catalog_category.tree())
@@ -469,7 +500,8 @@ class magento_task(models.Model):
         #testing
         print 'Fetching magento products...'
 
-        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
         
         magento_filter = {'product_id':{'from':31579}}
         
