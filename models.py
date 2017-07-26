@@ -185,6 +185,63 @@ class magento_task(models.Model):
         return res
 
     @api.model
+    def update_orders_from_magento(self):
+        reload(sys)
+        sys.setdefaultencoding("utf-8")
+
+        # check config and do nothing if it's missing some parameter
+        if not config.domain or \
+           not config.port or \
+           not config.user or \
+           not config.key or \
+           not config.protocol:
+           return
+
+        #testing
+        print 'Fetching magento orders to update...'
+        #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
+        
+        order_filter = {'created_at':{'from': date.today().strftime('%Y-%m-%d')}}
+
+        #fetch a list of magent orders from date
+        orders = m.sales_order.list(order_filter)
+
+        #filter orders to process state in ['new', 'processing']
+        m_orders_list = []
+        for i in orders:
+            if i['state'] in ['new', 'processing']:
+                m_orders_list.append('MAG-'+i['increment_id'])
+
+        #check which sale orders are allready imported in odoo
+        orders_to_update = []
+        for i in m_orders_list:
+            o_saleorder = self.env['sale.order'].search([('name', '=', i)])
+            if o_saleorder:
+                orders_to_update.append(i)
+
+        print 'Total orders to update', len(orders_to_update)
+        
+        for i in orders_to_update:
+            print 'Processing...', i
+            #checking sale order
+            odoo_order = self.env['sale.order'].search([('name', '=', i),('state', '=', 'draft')])
+            if odoo_order:
+                #updating history...
+                order = m.sales_order.info({'increment_id': i[4:]})
+                if order['status_history']:
+                    note = '===============================\n'
+                    for j in order['status_history']:
+                        note += 'created_at: '+ j['created_at']
+                        note += '\nentity_name: '+ j['entity_name']
+                        note += '\nstatus: '+ j['status']
+                        note += '\ncomment:'+ str(j['comment'])
+                        note += '\n===============================\n'
+
+                    if odoo_order.note != note:
+                        odoo_order.note = note
+
+    @api.model
     def sync_orders_from_magento(self):
         reload(sys)
         sys.setdefaultencoding("utf-8")
@@ -201,13 +258,6 @@ class magento_task(models.Model):
         print 'Fetching magento orders...'
         #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
-        
-        # orders = m.sales_order.list({'created_at': {'from': date.today().strftime('%Y-%m-%d')}})
-
-        # for order in orders:
-        #     print order
-        #END testing
-
 
         S_IVA_21S = self.env['account.tax'].search([('description', '=', 'S_IVA21S')])
         PRODUCT_UOM = self.env['product.uom'].search([('id','=',1)]).id
@@ -227,15 +277,11 @@ class magento_task(models.Model):
 
         #check which sale orders are allready imported in odoo
         orders_to_process = []
-        orders_to_update = []
         for i in m_orders_list:
             o_saleorder = self.env['sale.order'].search([('name', '=', i)])
             if not o_saleorder:
                 orders_to_process.append(i)
-            else:
-                orders_to_update.append(i)
-
-
+            
         #processing sale orders:
         print 'Total orders to process', len(orders_to_process)
 
@@ -345,34 +391,6 @@ class magento_task(models.Model):
                     note += '\n===============================\n'
 
                 o_saleorder.note = note
-
-        print 'Total orders to update', len(orders_to_update)
-
-        for i in orders_to_update:
-
-            print 'Processing...', i
-
-            #checking sale order
-            odoo_order = self.env['sale.order'].search([('name', '=', i),('state', '=', 'draft')])
-            if odoo_order:
-                #updating history...
-                order = m.sales_order.info({'increment_id': i[4:]})
-                if order['status_history']:
-                    note = '===============================\n'
-                    for j in order['status_history']:
-                        note += 'created_at: '+ j['created_at']
-                        note += '\nentity_name: '+ j['entity_name']
-                        note += '\nstatus: '+ j['status']
-                        note += '\ncomment:'+ str(j['comment'])
-                        note += '\n===============================\n'
-
-                    if odoo_order.note != note:
-                        odoo_order.note = note
-
-
-            #fetching order info
-            
-
 
 
     #PRODUCT BRAND
