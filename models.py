@@ -145,7 +145,7 @@ class magento_task(models.Model):
             address_data['country_id'] = country[0].id
         
         if data['country_id'] == 'ES':
-            state_code = region_states_spain[data['region_id']]
+            state_code = region_states_spain[int(data['region_id'])]
             state = self.env['res.country.state'].search([('code', '=', state_code)])
             if state:
                 address_data['state_id'] = state[0].id
@@ -366,8 +366,8 @@ class magento_task(models.Model):
                         note += '\ncomment:'+ str(j['comment'])
                         note += '\n===============================\n'
 
-                    if order.note != note:
-                        order.note = note
+                    if odoo_order.note != note:
+                        odoo_order.note = note
 
 
             #fetching order info
