@@ -57,6 +57,8 @@ class ProductTemplate(models.Model):
 class magento_task(models.Model):
     _name = 'magento.task'
 
+
+
     #SALEORDERS
     #SALEORDERS
     @api.model
@@ -72,6 +74,64 @@ class magento_task(models.Model):
     def create_partner_address(self, data, partner_id):
         #method to create a delivery or invoice address given magento address data
         
+        #dictionary to match spanish region_id with odoo state code
+        region_states_spain = {
+            130: '15', #A coruña
+            131: '01', #Alava
+            132: '02', #Albacete
+            133: '03', #Alicante
+            134: '04', #Almeria
+            135: '33', #Asturias
+            136: '05', #Avila
+            137: '06', #Badajoz
+            138: '07', #Baleares
+            139: '08', #Barcelona
+            140: '09', #Burgos
+            141: '10', #Caceres
+            142: '11', #Cadiz
+            143: '39', #Cantabria
+            144: '12', #Castellon
+            145: '51', #Ceuta
+            146: '13', #Ciudad Real
+            147: '14', #Cordoba
+            148: '16', #Cuenca
+            149: '17', #Girona
+            150: '18', #Granada
+            151: '19', #Guadalajara
+            152: '20', #Guipuzcoa
+            153: '21', #Huelva
+            154: '22', #Huesca
+            155: '23', #Jaen
+            156: '26', #La rioja
+            157: '35', #Las Palmas
+            158: '24', #Leon
+            159: '25', #Lleida
+            160: '27', #Lugo
+            161: '28', #Madrid
+            162: '29', #Malaga
+            163: '52', #Melilla
+            164: '30', #Murcia
+            165: '31', #Navarra
+            166: '32', #Ourense
+            167: '34', #Palencia
+            168: '36', #Pontevedra
+            169: '37', #Salamanca
+            170: '38', #Santa Cruz de Tenerife
+            171: '40', #Segovia
+            172: '41', #Sevilla
+            173: '42', #Soria
+            174: '43', #Tarragona
+            175: '44', #Teruel
+            176: '45', #Toledo
+            177: '46', #Valencia
+            178: '47', #Valladolid
+            179: '48', #Vizcaya
+            180: '49', #Zamora
+            181: '50', #Zaragoza
+        }
+
+
+
         address_data = {}
         address_data['name'] = data['firstname'] + ' ' + data['lastname']
         address_data['street'] = data['street'].replace("\n", " ")
@@ -82,6 +142,16 @@ class magento_task(models.Model):
         address_data['active'] = True
         address_data['customer'] = False
         address_data['parent_id'] = partner_id
+        country = self.env['res.country'].search([('code', '=', data['country_id'])])
+        if country:
+            address_data['country_id'] = country[0].id
+        
+        if data['country_id'] == 'ES':
+            state_code = region_states_spain[data['region_id']]
+            state = self.env['res.country.state'].search([('code', '=', state_code)])
+            if state:
+                address_data['state_id'] = state[0].id
+        
         if data['address_type'] == 'billing':
             address_data['type'] = 'invoice'
         elif data['address_type'] == 'shipping':
@@ -401,7 +471,7 @@ class magento_task(models.Model):
 
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
-        magento_filter = {'product_id':{'from':31227}}
+        magento_filter = {'product_id':{'from':31579}}
         
         magento_products = m.catalog_product.list(magento_filter)
         
@@ -464,4 +534,31 @@ class magento_task(models.Model):
                 print 9
                 sync_id = self.env['syncid.reference'].create(data_sync)
                 print 'FINISH'
+
+
+#STOCK SYNC
+#STOCK SYNC
+
+class stock_picking(models.Model):
+    
+    _inherit = 'stock.picking'
+
+    #check if it's a operation that triggers magento stock update
+    def action_done(self, cr, uid, ids, context=None):
+        print 'entro específico action_dome magento'
+        print 'entro específico action_dome magento'
+        print 'entro específico action_dome magento'
+        result = super(stock_picking, self).action_done(cr, uid, ids,
+                                                        context=context)
+        #checking suppliers operations
+        #19 git/stock 
+        #12 gia/stock
+        #25 bca/stock
+        #8 supplier
+        #9 clients
+        if self.location_dest_id.id in [19, 12, 25, 8, 9]:
+            #update magento stock!
+            print 'Bingo'
+        
+        return result
                 
