@@ -162,11 +162,12 @@ class magento_task(models.Model):
             res_syncid = self.create_syncid_data(res, data['address_id'])
         
         else:
-            res = self.env['res.partner'].write(address_id, address_data)
+            address_data['id'] = address_id
+            res = self.env['res.partner'].write(address_data)
 
         self.env.cr.commit()
 
-        return res
+        return address_id or res
 
     @api.model
     def create_partner(self, data):
@@ -192,6 +193,10 @@ class magento_task(models.Model):
         address_data['active'] = True
         address_data['customer'] = True
         address_data['category_id'] = [(6, 0, [customer_tags[data['customer_group_id']]])]
+
+        # if 'vat_id' in data['billing_address']:
+        #     if data['billing_address']['vat_id']:
+        address_data['vat'] = data['billing_address']['vat_id']
 
         res = self.env['res.partner'].create(address_data)
 
@@ -319,7 +324,8 @@ class magento_task(models.Model):
             m_billing_address_id = order['billing_address_id']
             syncid_billing = self.env['syncid.reference'].search([('source','=',1),('model','=',80),('source_id','=',m_billing_address_id)])
             if syncid_billing:
-                o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'update', syncid_billing[0].odoo_id).id
+                o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'update', syncid_billing[0].odoo_id)
+
             else:
                 o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'create', None).id
             
@@ -327,7 +333,7 @@ class magento_task(models.Model):
             m_shipping_addess_id = order['shipping_address_id']
             syncid_shipping = self.env['syncid.reference'].search([('source','=',1),('model','=',80),('source_id','=',m_shipping_addess_id)])
             if syncid_shipping:
-                o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_customer[0].odoo_id).id
+                o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_customer[0].odoo_id)
             else:
                 o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'create', None).id
 
