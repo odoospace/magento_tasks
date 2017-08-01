@@ -71,7 +71,7 @@ class magento_task(models.Model):
         res = self.env['syncid.reference'].create(syncid_data)
 
     @api.model
-    def create_partner_address(self, data, partner_id):
+    def create_partner_address(self, data, partner_id, mode, address_id=None):
         #method to create a delivery or invoice address given magento address data
         
         #dictionary to match spanish region_id with odoo state code
@@ -155,10 +155,15 @@ class magento_task(models.Model):
         elif data['address_type'] == 'shipping':
             address_data['type'] = 'delivery'
 
-        res = self.env['res.partner'].create(address_data)
 
-        #create syncid reference
-        res_syncid = self.create_syncid_data(res, data['address_id'])
+        if mode == 'create':
+            res = self.env['res.partner'].create(address_data)
+            #create syncid reference
+            res_syncid = self.create_syncid_data(res, data['address_id'])
+        
+        else:
+            res = self.env['res.partner'].write(address_id, address_data)
+
         self.env.cr.commit()
 
         return res
@@ -167,15 +172,26 @@ class magento_task(models.Model):
     def create_partner(self, data):
         #method to create basic partner data
         #TODO: maybe add more accurate data in address
+        customer_tags = {
+            '0': None, #NOT LOGGED IN
+            '1':1, #General
+            '4':2, #Piloto
+            '6':3, #Taller
+            '7':4, #Taler NO VAT
+            '8':5, #TTQ
+        }
+
         address_data = {}
         address_data['name'] = data['customer_firstname'] + ' ' + data['customer_lastname']
         # address_data['street'] = data['street']
         # address_data['city'] = data['city']
         # address_data['zip'] = data['postcode']
-        # address_data['phone'] = data['telephone']
+        
+        address_data['phone'] = data['billing_address']['telephone']
         address_data['email'] = data['customer_email']
         address_data['active'] = True
         address_data['customer'] = True
+        address_data['category_id'] = [(6, 0, [customer_tags[data['customer_group_id']]])]
 
         res = self.env['res.partner'].create(address_data)
 
@@ -199,8 +215,7 @@ class magento_task(models.Model):
 
         #testing
         print 'Fetching magento orders to update...'
-        #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-        m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
         order_filter = {'created_at':{'from': date.today().strftime('%Y-%m-%d')}}
 
@@ -256,8 +271,7 @@ class magento_task(models.Model):
 
         #testing
         print 'Fetching magento orders...'
-        #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-        m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
 
         S_IVA_21S = self.env['account.tax'].search([('description', '=', 'S_IVA21S')])
         PRODUCT_UOM = self.env['product.uom'].search([('id','=',1)]).id
@@ -305,17 +319,17 @@ class magento_task(models.Model):
             m_billing_address_id = order['billing_address_id']
             syncid_billing = self.env['syncid.reference'].search([('source','=',1),('model','=',80),('source_id','=',m_billing_address_id)])
             if syncid_billing:
-                o_billing_id = syncid_customer[0].odoo_id
+                o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'update', syncid_billing[0].odoo_id).id
             else:
-                o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id).id
+                o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'create', None).id
             
             #TODO:shipping
             m_shipping_addess_id = order['shipping_address_id']
             syncid_shipping = self.env['syncid.reference'].search([('source','=',1),('model','=',80),('source_id','=',m_shipping_addess_id)])
             if syncid_shipping:
-                o_shipping_id = syncid_customer[0].odoo_id
+                o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_customer[0].odoo_id).id
             else:
-                o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id).id
+                o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'create', None).id
 
             
             #Create sale order:
@@ -410,8 +424,7 @@ class magento_task(models.Model):
 
         #testing
         print 'Fetching magento brands...'
-        #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-        m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
         magento_brands = m.catalog_product_attribute.info('manufacturer')['options']
         for b in magento_brands:
@@ -468,8 +481,7 @@ class magento_task(models.Model):
 
         #testing
         print 'Fetching magento categorys...'
-        #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-        m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
         # read categories
         categories = {}
@@ -518,8 +530,7 @@ class magento_task(models.Model):
         #testing
         print 'Fetching magento products...'
 
-        #m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-        m = MagentoAPI('www.motoscoot.net', 443, 'pedro', 'pedroapillave', proto='https')
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
         magento_filter = {'product_id':{'from':31579}}
         
