@@ -671,6 +671,9 @@ class stock_move(models.Model):
                 product_syncid_references = syncid_obj.search(cr, uid, domain, context=context)
                 if product_syncid_references:
                     product_syncid_reference = syncid_obj.browse(cr, uid, product_syncid_references, context=context)
+                    is_in_stock = '0'
+                    if products_stock_dict[i] > 0:
+                        is_in_stock = '1'
                     m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(products_stock_dict[i])})
         
         return result
