@@ -34,22 +34,22 @@ class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
 
-    @api.multi
-    def write(self, vals):
-        result = super(ProductTemplate, self).write(vals)
+    # @api.multi
+    # def write(self, vals):
+    #     result = super(ProductTemplate, self).write(vals)
 
-        data = {}
-        if 'list_price' in vals or 'extra_price' in vals:
-            syncid = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('odoo_id', '=', self.id)])
-            if syncid and len(syncid) == 1:
-                m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-                if 'list_price' in vals:
-                    data['price'] = vals['list_price']
-                if 'extra_price' in vals:
-                    data['special_price'] = vals['extra_price'] or self.extra_price
-                m.catalog_product.update(syncid[0].source_id, data)
+    #     data = {}
+    #     if 'list_price' in vals or 'extra_price' in vals:
+    #         syncid = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('odoo_id', '=', self.id)])
+    #         if syncid and len(syncid) == 1:
+    #             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+    #             if 'list_price' in vals:
+    #                 data['price'] = vals['list_price']
+    #             if 'extra_price' in vals:
+    #                 data['special_price'] = vals['extra_price'] or self.extra_price
+    #             m.catalog_product.update(syncid[0].source_id, data)
                 
-        return result
+    #     return result
 
 
 
@@ -196,7 +196,7 @@ class magento_task(models.Model):
 
         # if 'vat_id' in data['billing_address']:
         #     if data['billing_address']['vat_id']:
-        address_data['vat'] = data['billing_address']['vat_id']
+        # address_data['vat'] = data['billing_address']['vat_id']
 
         res = self.env['res.partner'].create(address_data)
 
