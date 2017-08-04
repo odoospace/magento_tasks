@@ -610,39 +610,6 @@ class stock_move(models.Model):
     
     _inherit = 'stock.move'
 
-    #check if it's a operation that triggers magento stock update
-    # def action_done(self, cr, uid, ids, context=None):
-    #     print 'entering stock_move action_dome - magento update'
-
-    #     result = super(stock_move, self).action_done(cr, uid, ids,
-    #                                                     context=context)
-    #     destination = 0
-    #     products_to_sync = []
-    #     products_stock_dict = {}
-    #     for move in self.browse(cr, uid, ids, context=context):
-    #         if move.picking_id:
-    #             destination = move.picking_id.location_dest_id.id
-    #             for i in move.picking_id.pack_operation_product_ids:
-    #                 products_to_sync.append(i.product_id.id)
-    #                 products_stock_dict[i.product_id.id] = i.product_id.qty_available
-
-    #     syncid_obj = self.pool.get("syncid.reference")
-    #     product_obj = self.pool.get("product.product")
-
-
-        
-    #     if destination in [19, 12, 25, 8, 9]:
-    #         #update magento stock!
-    #         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-    #         for i in products_to_sync:
-    #             domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,i)]
-    #             product_syncid_references = syncid_obj.search(cr, uid, domain, context=context)
-    #             if product_syncid_references:
-    #                 product_syncid_reference = syncid_obj.browse(cr, uid, product_syncid_references, context=context)
-    #                 m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(products_stock_dict[i])})
-        
-    #     return result
-
     def action_done(self, cr, uid, ids, context=None):
         print 'entering stock_move action_dome - magento update'
 
@@ -672,9 +639,11 @@ class stock_move(models.Model):
                 if product_syncid_references:
                     product_syncid_reference = syncid_obj.browse(cr, uid, product_syncid_references, context=context)
                     is_in_stock = '0'
+                    # print product_syncid_reference[0].source_id, products_stock_dict[i]
                     if products_stock_dict[i] > 0:
                         is_in_stock = '1'
-                    m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(products_stock_dict[i])})
+                    # print 'is_in_stock', is_in_stock
+                    m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
         
         return result
                 
