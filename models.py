@@ -646,4 +646,38 @@ class stock_move(models.Model):
                     m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
         
         return result
+
+class StockInventory(models.Model):
+
+    _inherit = "stock.inventory"
+
+    def action_done(self, cr, uid, ids, context=None):
+        """ Finish the inventory
+        @return: True
+        """
+
+        result = super(StockInventory, self).action_done(cr, uid, ids, context=context)
+        syncid_obj = self.pool.get("syncid.reference")
+
+        for inv in self.browse(cr, uid, ids, context=context):
+            print 'Initiating sync stock inventory adjustment - %s to process...' % len(inv.line_ids)
+            con = 1
+            m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+
+            for inventory_line in inv.line_ids:
+                print 'Syncing inventory_line %s/%s - %s' % (con, len(inv.line_ids), inventory_line.product_id.id)
+                con +=1
+                domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,inventory_line.product_id.id)]
+                product_syncid_references = syncid_obj.search(cr, uid, domain, context=context)
+                if product_syncid_references:
+                    product_syncid_reference = syncid_obj.browse(cr, uid, product_syncid_references, context=context)
+                    is_in_stock = '0'
+                    # print product_syncid_reference[0].source_id, products_stock_dict[i]
+                    if inventory_line.product_id.qty_available > 0:
+                        is_in_stock = '1'
+                    # print 'is_in_stock', is_in_stock
+                    m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
+
+        return True
+
                 
