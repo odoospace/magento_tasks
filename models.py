@@ -621,7 +621,7 @@ class stock_move(models.Model):
         for move in self.browse(cr, uid, ids, context=context):
             if move.picking_id:
                 destination = move.picking_id.location_dest_id.id
-                products_to_sync.append(move.product_id.id)
+                products_to_sync.append(move.product_id.product_tmpl_id.id)
                 products_stock_dict[move.product_id.id] = move.product_id.qty_available
 
         syncid_obj = self.pool.get("syncid.reference")
@@ -667,7 +667,7 @@ class StockInventory(models.Model):
             for inventory_line in inv.line_ids:
                 print 'Syncing inventory_line %s/%s - %s' % (con, len(inv.line_ids), inventory_line.product_id.id)
                 con +=1
-                domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,inventory_line.product_id.id)]
+                domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,inventory_line.product_id.product_tmpl_id.id)]
                 product_syncid_references = syncid_obj.search(cr, uid, domain, context=context)
                 if product_syncid_references:
                     product_syncid_reference = syncid_obj.browse(cr, uid, product_syncid_references, context=context)
