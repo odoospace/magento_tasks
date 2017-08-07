@@ -25,7 +25,7 @@
     # Check https://github.com/odoo/odoo/blob/master/openerp/addons/base/module/module_data.xml
     # for the full list
     'category': 'Association',
-    'version': '9.0.1.7',
+    'version': '9.0.1.8',
 
     # any module necessary for this one to work correctly
     'depends': ['sale', 'account', 'base', 'stock'],

@@ -622,7 +622,7 @@ class stock_move(models.Model):
             if move.picking_id:
                 destination = move.picking_id.location_dest_id.id
                 products_to_sync.append(move.product_id.product_tmpl_id.id)
-                products_stock_dict[move.product_id.id] = move.product_id.qty_available
+                products_stock_dict[move.product_id.product_tmpl_id.id] = move.product_id.qty_available
 
         syncid_obj = self.pool.get("syncid.reference")
         product_obj = self.pool.get("product.product")
