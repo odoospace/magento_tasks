@@ -3,19 +3,22 @@
     'name': "Magento Tasks",
 
     'summary': """
-        Sync data from magento platform to odoo
+        Sync data from magento platform to odoo withoud oca connector proof of concept
     """,
 
     'description': """
+        WARNING: this code is highly customized for a client and should only be used as a proof of concept
+        
         magento -> odoo:
         
-        saleorders
+        saleorders - news and recurring comment
         product brands aka manufactureres in magento
         product categorys
         products
 
         odoo -> magento:
         
+        stock - picking & inventory adjustments
     """,
 
     'author': "Impulzia",
@@ -25,7 +28,7 @@
     # Check https://github.com/odoo/odoo/blob/master/openerp/addons/base/module/module_data.xml
     # for the full list
     'category': 'Association',
-    'version': '9.0.1.8',
+    'version': '9.0.1.9',
 
     # any module necessary for this one to work correctly
     'depends': ['sale', 'account', 'base', 'stock'],

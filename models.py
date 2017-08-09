@@ -205,6 +205,8 @@ class magento_task(models.Model):
 
         return res
 
+    #UPDATE SALEORDERS
+    #UPDATE SALEORDERS
     @api.model
     def update_orders_from_magento(self):
         reload(sys)
@@ -261,6 +263,8 @@ class magento_task(models.Model):
                     if odoo_order.note != note:
                         odoo_order.note = note
 
+    #SYNC SALEORDERS
+    #SYNC SALEORDERS
     @api.model
     def sync_orders_from_magento(self):
         reload(sys)
@@ -283,7 +287,8 @@ class magento_task(models.Model):
 
         #first get de date range to check orders
         #TODO: today minus 10 days for safe check
-        order_filter = {'created_at':{'from': date.today().strftime('%Y-%m-%d')}}
+        # order_filter = {'created_at':{'from': date.today().strftime('%Y-%m-%d')}}
+        order_filter = {'created_at':{'from': '2017-08-08'}}
 
         #fetch a list of magent orders from date
         orders = m.sales_order.list(order_filter)
@@ -349,8 +354,30 @@ class magento_task(models.Model):
             o_saleorder = self.env['sale.order'].create(saleorder_data)
 
             #Create sale order lines data:
+            bundles = []
+            configurable = {}
             for line in order['items']:
                 saleorder_line_data = {}
+                saleorder_line_data['price_unit'] = 0
+
+                #simple, configurable and bundle logic
+                if line['product_type'] == 'bundle':
+                    bundles.append(int(line['item_id']))
+                    continue
+                if line['product_type'] == 'configurable':
+                    configurable[line['item_id']] = float(line['base_original_price'])
+                    continue
+                if line['product_type'] == 'simple':
+                    if line['parent_item_id']:
+                        if line['parent_item_id'] in configurable:
+                            saleorder_line_data['price_unit'] = configurable[line['parent_item_id']]
+                        else:
+                            if line['base_original_price']:
+                                saleorder_line_data['price_unit'] = float(line['base_original_price'])
+                    else:
+                        if line['base_original_price']:
+                            saleorder_line_data['price_unit'] = float(line['base_original_price'])
+                
                 saleorder_line_data['order_id'] = o_saleorder.id
 
                 product = self.env['product.product'].search([('default_code', '=', line['sku'])])
@@ -362,10 +389,6 @@ class magento_task(models.Model):
                 saleorder_line_data['name'] = line['name']
                 saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
-                if line['base_original_price']:
-                    saleorder_line_data['price_unit'] = float(line['base_original_price'])
-                else:
-                    saleorder_line_data['price_unit'] = 0
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
@@ -606,10 +629,12 @@ class magento_task(models.Model):
 #STOCK SYNC
 #STOCK SYNC
 
+#this controls de stock.moves when working with IN/OUT picking operations
 class stock_move(models.Model):
     
     _inherit = 'stock.move'
 
+    #inherited method to add MAGENTO STOCK SYNC when a IN/OUT picking operation is validated
     def action_done(self, cr, uid, ids, context=None):
         print 'entering stock_move action_dome - magento update'
 
@@ -647,10 +672,12 @@ class stock_move(models.Model):
         
         return result
 
+#This controls the inventory adjustment
 class StockInventory(models.Model):
 
     _inherit = "stock.inventory"
 
+    #inherited method to add MAGENTO STOCK SYNC when a Inventory Adjustments is validated
     def action_done(self, cr, uid, ids, context=None):
         """ Finish the inventory
         @return: True
