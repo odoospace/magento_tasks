@@ -34,6 +34,10 @@ class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
 
+    magento_sync = fields.Boolean(string='Magento sync error')
+    magento_sync_date = fields.Date(string='Sync error date')
+
+
     # @api.multi
     # def write(self, vals):
     #     result = super(ProductTemplate, self).write(vals)
@@ -691,6 +695,17 @@ class StockInventory(models.Model):
             con = 1
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
 
+            m_check = False
+            m_plist = []
+            if len(inv.line_ids) >1:
+                print 'Multiple sync stock inventory adjunstment...Fetching catalog for checks'
+                m_check = True
+                m_products = m.catalog_product.list()
+                for i in m_products:
+                    m_plist.append(int(i['product_id']))
+                print 'Catalog properly fetched!'
+
+
             for inventory_line in inv.line_ids:
                 print 'Syncing inventory_line %s/%s - %s' % (con, len(inv.line_ids), inventory_line.product_id.id)
                 con +=1
@@ -699,12 +714,20 @@ class StockInventory(models.Model):
                 if product_syncid_references:
                     product_syncid_reference = syncid_obj.browse(cr, uid, product_syncid_references, context=context)
                     is_in_stock = '0'
-                    # print product_syncid_reference[0].source_id, products_stock_dict[i]
                     if inventory_line.product_id.qty_available > 0:
                         is_in_stock = '1'
-                    # print 'is_in_stock', is_in_stock
-                    m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
 
+                    #add error tolerance
+                    if not m_check:
+                        #found! update it!
+                        m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
+                    else:
+                        if int(product_syncid_reference[0].source_id) in m_plist:
+                            m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
+                        else:
+                            #not found! manage error
+                            # self.pool.get("product.template").write(inventory_line.product_id.product_tmpl_id.id, {'magento_sync': True, 'magento_sync_date': datetime.now()})
+                            inventory_line.product_id.product_tmpl_id.write({'magento_sync': True, 'magento_sync_date': datetime.now()})
         return True
 
                 

@@ -28,7 +28,7 @@
     # Check https://github.com/odoo/odoo/blob/master/openerp/addons/base/module/module_data.xml
     # for the full list
     'category': 'Association',
-    'version': '9.0.1.9',
+    'version': '9.0.2.0',
 
     # any module necessary for this one to work correctly
     'depends': ['sale', 'account', 'base', 'stock'],
@@ -36,7 +36,7 @@
     # always loaded
     'data': [
         # 'security/ir.model.access.csv',
-        #'templates.xml',
+        'templates.xml',
         'cron.xml'
     ],
     # only loaded in demonstration mode
