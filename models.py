@@ -56,6 +56,35 @@ class ProductTemplate(models.Model):
     #     return result
 
 
+class SaleOrder(models.Model):
+    _inherit = 'sale.order'
+
+    @api.multi
+    def update_magento_orders(self):
+        print 'Updating Magento Orders from tree view'
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        con = 1
+        for item in self:
+            print 'Updating %s/%s' %  (con, len(self))
+            con +=1
+            if 'MAG' in item.name and item.state == 'draft':
+                magento_id = item.name[4:]
+                order = m.sales_order.info({'increment_id': magento_id})
+                print order['increment_id']
+                if order['status_history']:
+                    note = '===============================\n'
+                    for j in order['status_history']:
+                        note += 'created_at: '+ j['created_at']
+                        note += '\nentity_name: '+ j['entity_name']
+                        note += '\nstatus: '+ j['status']
+                        note += '\ncomment:'+ str(j['comment'])
+                        note += '\n===============================\n'
+                    if item.note != note:
+                        item.note = note
+
+
+
+
 
 # task to schedule
 class magento_task(models.Model):
