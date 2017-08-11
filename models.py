@@ -286,7 +286,7 @@ class magento_task(models.Model):
         print 'Fetching magento orders...'
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
 
-        S_IVA_21S = self.env['account.tax'].search([('description', '=', 'S_IVA21S')])
+        S_IVA_21S = self.env['account.tax'].search([('description', '=', 'S_IVA21B')])
         PRODUCT_UOM = self.env['product.uom'].search([('id','=',1)]).id
 
         #first get de date range to check orders
