@@ -19,6 +19,8 @@
         odoo -> magento:
         
         stock - picking & inventory adjustments
+        sale states
+        picking tracking ref
     """,
 
     'author': "Impulzia",
@@ -28,7 +30,7 @@
     # Check https://github.com/odoo/odoo/blob/master/openerp/addons/base/module/module_data.xml
     # for the full list
     'category': 'Association',
-    'version': '9.0.2.2',
+    'version': '9.0.2.3',
 
     # any module necessary for this one to work correctly
     'depends': ['sale', 'account', 'base', 'stock'],

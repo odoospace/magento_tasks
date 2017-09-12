@@ -60,6 +60,23 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     @api.multi
+    def action_cancel(self):
+        if 'MAG' in self.name and self.state == 'draft':
+            print 'Canceling Magento Order...'
+            m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+            magento_id = self.name[4:]
+            order = m.sales_order.cancel(int(magento_id))
+        self.write({'state': 'cancel'})
+
+    @api.multi
+    def action_confirm(self):
+        res = super(SaleOrder, self).action_confirm()
+        if 'MAG' in self.name and self.state == 'sale':
+            m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+            magento_id = self.name[4:]
+            order = m.sales_order.addComment(int(magento_id), 'processing', 'En proceso')
+
+    @api.multi
     def update_magento_orders(self):
         print 'Updating Magento Orders from tree view'
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
@@ -83,14 +100,9 @@ class SaleOrder(models.Model):
                         item.note = note
 
 
-
-
-
 # task to schedule
 class magento_task(models.Model):
     _name = 'magento.task'
-
-
 
     #SALEORDERS
     #SALEORDERS
@@ -321,7 +333,7 @@ class magento_task(models.Model):
         #first get de date range to check orders
         #TODO: today minus 10 days for safe check
         # order_filter = {'created_at':{'from': date.today().strftime('%Y-%m-%d')}}
-        order_filter = {'created_at':{'from': '2017-08-08'}}
+        order_filter = {'created_at':{'from': '2017-09-01'}}
 
         #fetch a list of magent orders from date
         orders = m.sales_order.list(order_filter)
@@ -661,6 +673,29 @@ class magento_task(models.Model):
 
 #STOCK SYNC
 #STOCK SYNC
+
+
+class StockPicking(models.Model):
+
+    _inherit = 'stock.picking'
+
+    def write(self, cr, uid, ids, vals, context=None):
+        res = super(StockPicking, self).write(cr, uid, ids, vals, context=context)
+        if vals.get('carrier_tracking_ref'):
+            print vals
+            for i in self.browse(cr, uid, ids, context=context):
+                if 'MAG' in i.origin:
+                    print 'Adding tracking to Magento Order...', i.origin
+                    m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+                    magento_id = i.origin[4:]
+                    shipment = m.sales_order_shipment.create(int(magento_id))
+                    track = m.sales_order_shipment.addTrack(int(shipment), 'custom', i.carrier_id.name, vals['carrier_tracking_ref'] )
+                    order = m.sales_order.addComment(int(magento_id), 'completed', 'Completado')
+
+
+
+
+
 
 #this controls de stock.moves when working with IN/OUT picking operations
 class stock_move(models.Model):
