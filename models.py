@@ -693,7 +693,7 @@ class StockPicking(models.Model):
                     magento_id = i.origin[4:]
                     shipment = m.sales_order_shipment.create(magento_id)
                     track = m.sales_order_shipment.addTrack(int(shipment), 'custom', i.carrier_id.name, vals['carrier_tracking_ref'] )
-                    order = m.sales_order.addComment(imagento_id, 'completed', 'Completado')
+                    order = m.sales_order.addComment(magento_id, 'completed', 'Completado')
         return res
 
 
