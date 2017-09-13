@@ -68,7 +68,7 @@ class SaleOrder(models.Model):
             order = m.sales_order.info(magento_id)
             if order:
                 if order['status'] != 'canceled':
-                    order = m.sales_order.cancel(int(magento_id))
+                    order = m.sales_order.cancel(magento_id)
         self.write({'state': 'cancel'})
 
     @api.multi
@@ -77,7 +77,7 @@ class SaleOrder(models.Model):
         if 'MAG' in self.name and self.state == 'sale':
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
             magento_id = self.name[4:]
-            order = m.sales_order.addComment(int(magento_id), 'processing', 'En proceso')
+            order = m.sales_order.addComment(magento_id, 'processing', 'En proceso')
 
     @api.multi
     def update_magento_orders(self):
@@ -691,9 +691,9 @@ class StockPicking(models.Model):
                     print 'Adding tracking to Magento Order...', i.origin
                     m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
                     magento_id = i.origin[4:]
-                    shipment = m.sales_order_shipment.create(int(magento_id))
+                    shipment = m.sales_order_shipment.create(magento_id)
                     track = m.sales_order_shipment.addTrack(int(shipment), 'custom', i.carrier_id.name, vals['carrier_tracking_ref'] )
-                    order = m.sales_order.addComment(int(magento_id), 'completed', 'Completado')
+                    order = m.sales_order.addComment(imagento_id, 'completed', 'Completado')
         return res
 
 
