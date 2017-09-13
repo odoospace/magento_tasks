@@ -65,7 +65,10 @@ class SaleOrder(models.Model):
             print 'Canceling Magento Order...'
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
             magento_id = self.name[4:]
-            order = m.sales_order.cancel(int(magento_id))
+            order = m.sales_order.info(magento_id)
+            if order:
+                if order['status'] != 'canceled':
+                    order = m.sales_order.cancel(int(magento_id))
         self.write({'state': 'cancel'})
 
     @api.multi
