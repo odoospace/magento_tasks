@@ -336,7 +336,7 @@ class magento_task(models.Model):
         #first get de date range to check orders
         #TODO: today minus 10 days for safe check
         # order_filter = {'created_at':{'from': date.today().strftime('%Y-%m-%d')}}
-        order_filter = {'created_at':{'from': '2017-09-01'}}
+        order_filter = {'created_at':{'from': '2017-10-15'}}
 
         #fetch a list of magent orders from date
         orders = m.sales_order.list(order_filter)
@@ -428,7 +428,7 @@ class magento_task(models.Model):
                 
                 saleorder_line_data['order_id'] = o_saleorder.id
 
-                product = self.env['product.product'].search([('default_code', '=', line['sku'])])
+                product = self.env['product.product'].search([('default_code', '=', line['sku']),('active','=',True)])
                 if product:
                     saleorder_line_data['product_id'] = product.id
                 else:
@@ -482,6 +482,17 @@ class magento_task(models.Model):
                     note += '\n===============================\n'
 
                 o_saleorder.note = note
+
+            if order['discount_description']:
+                saleorder_line_data = {}
+                saleorder_line_data['order_id'] = o_saleorder.id
+                saleorder_line_data['product_uom'] = PRODUCT_UOM
+                saleorder_line_data['name'] = 'Vale web - ' + order['discount_description'] 
+                saleorder_line_data['product_id'] = 16716 #product 'VALE WEB'
+                saleorder_line_data['product_uom_qty'] = 1
+                saleorder_line_data['price_unit'] = float(order['discount_amount'])
+                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
+                o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)                
 
 
     #PRODUCT BRAND
