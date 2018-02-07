@@ -4,7 +4,7 @@ from openerp import models, fields, api
 from pprint import pprint
 import json
 import sys
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from magento import MagentoAPI
 import config
 
@@ -38,22 +38,38 @@ class ProductTemplate(models.Model):
     magento_sync_date = fields.Date(string='Sync error date')
 
 
-    # @api.multi
-    # def write(self, vals):
-    #     result = super(ProductTemplate, self).write(vals)
+    @api.multi
+    def write(self, vals):
+        result = super(ProductTemplate, self).write(vals)
 
-    #     data = {}
-    #     if 'list_price' in vals or 'extra_price' in vals:
-    #         syncid = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('odoo_id', '=', self.id)])
-    #         if syncid and len(syncid) == 1:
-    #             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-    #             if 'list_price' in vals:
-    #                 data['price'] = vals['list_price']
-    #             if 'extra_price' in vals:
-    #                 data['special_price'] = vals['extra_price'] or self.extra_price
-    #             m.catalog_product.update(syncid[0].source_id, data)
+        data = {}
+        if 'list_price' in vals or 'extra_price' in vals:
+            syncid = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('odoo_id', '=', self.id)])
+            if syncid and len(syncid) == 1:
+                # m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+                if 'list_price' in vals:
+                    data['price'] = vals['list_price']
+                    if syncid[0].source_id == '29436':
+                        print 'Entro exclusion DAVIDTESTSTOCK'
+                        database = 'motoscoot_production'
+                        motoscoot_db = self.env['base.external.dbsource'].search([('name', '=', database)])
+                        sql = 'update catalog_product_entity set value = %s where entity_id=%s and attribute_set_id=%s limit=%s;'
+                        motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s limit %s
+;""", (vals['list_price'], int(syncid[0].source_id), 75, 1), nodata=True)
+
+
+                if 'extra_price' in vals:
+                    data['special_price'] = vals['extra_price'] or self.extra_price
+                    if syncid[0].source_id == '29436':
+                        print 'Entro exclusion DAVIDTESTSTOCK'
+                        database = 'motoscoot_production'
+                        motoscoot_db = self.env['base.external.dbsource'].search([('name', '=', database)])
+                        sql = 'update catalog_product_entity set value = %s where entity_id=%s and attribute_set_id=%s limit=%s;'
+                        motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s limit %s;""", (vals['extra_price'], int(syncid[0].source_id), 76, 1), nodata=True)
+
+                # m.catalog_product.update(syncid[0].source_id, data)
                 
-    #     return result
+        return result
 
 
 class SaleOrder(models.Model):
@@ -336,7 +352,8 @@ class magento_task(models.Model):
         #first get de date range to check orders
         #TODO: today minus 10 days for safe check
         # order_filter = {'created_at':{'from': date.today().strftime('%Y-%m-%d')}}
-        order_filter = {'created_at':{'from': '2017-10-15'}}
+        # order_filter = {'created_at':{'from': '2017-10-15'}}
+        order_filter = {'created_at':{'from': (date.today()-timedelta(7)).strftime('%Y-%m-%d')}}
 
         #fetch a list of magent orders from date
         orders = m.sales_order.list(order_filter)
@@ -431,10 +448,15 @@ class magento_task(models.Model):
                 product = self.env['product.product'].search([('default_code', '=', line['sku']),('active','=',True)])
                 if product:
                     saleorder_line_data['product_id'] = product.id
+                    if product.default_code:
+                        saleorder_line_data['name'] = '[%s] %s' % (product.default_code, line['name'])
+                    else:
+                        saleorder_line_data['name'] = line['name']
                 else:
                     saleorder_line_data['product_id'] = 15414 #sync-error product
+                    saleorder_line_data['name'] = line['name']
                 
-                saleorder_line_data['name'] = line['name']
+                # saleorder_line_data['name'] = line['name']
                 saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
@@ -620,7 +642,7 @@ class magento_task(models.Model):
 
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
-        magento_filter = {'product_id':{'from':31579}}
+        magento_filter = {'product_id':{'from':32085}}
         
         magento_products = m.catalog_product.list(magento_filter)
         
@@ -735,7 +757,7 @@ class stock_move(models.Model):
         syncid_obj = self.pool.get("syncid.reference")
         product_obj = self.pool.get("product.product")
         
-        if destination in [19, 12, 25, 8, 9]:
+        if destination in [19, 12, 25, 8, 9, 5]:
             #update magento stock!
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
             con = 1
