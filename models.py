@@ -49,23 +49,24 @@ class ProductTemplate(models.Model):
                 # m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
                 if 'list_price' in vals:
                     data['price'] = vals['list_price']
-                    if syncid[0].source_id == '29436':
-                        print 'Entro exclusion DAVIDTESTSTOCK'
+                    if True:
+                    # if syncid[0].source_id == '29436':
+                        # print 'Entro exclusion DAVIDTESTSTOCK'
                         database = 'motoscoot_production'
                         motoscoot_db = self.env['base.external.dbsource'].search([('name', '=', database)])
-                        sql = 'update catalog_product_entity set value = %s where entity_id=%s and attribute_set_id=%s limit=%s;'
-                        motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s limit %s
-;""", (vals['list_price'], int(syncid[0].source_id), 75, 1), nodata=True)
+                        # sql = 'update catalog_product_entity set value = %s where entity_id=%s and attribute_set_id=%s limit=%s;'
+                        motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s;""", (vals['list_price'], int(syncid[0].source_id), 75), nodata=True)
 
 
                 if 'extra_price' in vals:
                     data['special_price'] = vals['extra_price'] or self.extra_price
-                    if syncid[0].source_id == '29436':
-                        print 'Entro exclusion DAVIDTESTSTOCK'
+                    if True:
+                    # if syncid[0].source_id == '29436':
+                    #     print 'Entro exclusion DAVIDTESTSTOCK'
                         database = 'motoscoot_production'
                         motoscoot_db = self.env['base.external.dbsource'].search([('name', '=', database)])
-                        sql = 'update catalog_product_entity set value = %s where entity_id=%s and attribute_set_id=%s limit=%s;'
-                        motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s limit %s;""", (vals['extra_price'], int(syncid[0].source_id), 76, 1), nodata=True)
+                        # sql = 'update catalog_product_entity set value = %s where entity_id=%s and attribute_set_id=%s limit=%s;'
+                        motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s;""", (vals['extra_price'], int(syncid[0].source_id), 76), nodata=True)
 
                 # m.catalog_product.update(syncid[0].source_id, data)
                 
