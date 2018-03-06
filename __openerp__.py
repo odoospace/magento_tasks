@@ -33,7 +33,7 @@
     'version': '9.0.2.5',
 
     # any module necessary for this one to work correctly
-    'depends': ['sale', 'account', 'base', 'stock'],
+    'depends': ['sale', 'account', 'base', 'stock', 'syncid'],
 
     # always loaded
     'data': [
