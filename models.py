@@ -314,7 +314,7 @@ class magento_task(models.Model):
             if i['state'] in ['new', 'processing']:
                 m_orders_list.append('MAG-'+i['increment_id'])
             elif i['state'] in ['pending_payment']:
-                order = m.sales_order.info({'increment_id': i['increment_id']}):
+                order = m.sales_order.info({'increment_id': i['increment_id']})
                 if order:
                     if order['payment']:
                         if order['payment']['method'] == 'paypal_standard':
@@ -386,7 +386,7 @@ class magento_task(models.Model):
             if i['state'] in ['new', 'processing']:
                 m_orders_list.append('MAG-'+i['increment_id'])
             elif i['state'] in ['pending_payment']:
-                order = m.sales_order.info({'increment_id': i['increment_id']}):
+                order = m.sales_order.info({'increment_id': i['increment_id']})
                 if order:
                     if order['payment']:
                         if order['payment']['method'] == 'paypal_standard':
