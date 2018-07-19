@@ -313,9 +313,13 @@ class magento_task(models.Model):
         for i in orders:
             if i['state'] in ['new', 'processing']:
                 m_orders_list.append('MAG-'+i['increment_id'])
-            elif i['payment']:
-                if i['payment']['method'] == 'paypal_standard' and i['state'] == 'pending_payment':
-                    m_orders_list.append('MAG-'+i['increment_id'])
+            elif i['state'] in ['pending_payment']:
+                order = m.sales_order.info({'increment_id': i['increment_id']}):
+                if order:
+                    if order['payment']:
+                        if order['payment']['method'] == 'paypal_standard':
+                            m_orders_list.append('MAG-'+i['increment_id'])
+
 
         #check which sale orders are allready imported in odoo
         orders_to_update = []
@@ -381,9 +385,12 @@ class magento_task(models.Model):
         for i in orders:
             if i['state'] in ['new', 'processing']:
                 m_orders_list.append('MAG-'+i['increment_id'])
-            elif i['payment']:
-                if i['payment']['method'] == 'paypal_standard' and i['state'] == 'pending_payment':
-                    m_orders_list.append('MAG-'+i['increment_id'])
+            elif i['state'] in ['pending_payment']:
+                order = m.sales_order.info({'increment_id': i['increment_id']}):
+                if order:
+                    if order['payment']:
+                        if order['payment']['method'] == 'paypal_standard':
+                            m_orders_list.append('MAG-'+i['increment_id'])
 
 
 
