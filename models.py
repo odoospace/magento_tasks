@@ -127,6 +127,20 @@ class magento_task(models.Model):
     #SALEORDERS
     #SALEORDERS
     @api.model
+    def get_bom_product(self, product_ids):
+        res = None
+        product_ids.sort()
+        boms =[obj.bom_id for obj in self.env['mrp.bom.line'].search([('product_id', '=', product_ids[0])])]
+        for bom in boms:
+            print bom, boms
+            bom_products = [obj.product_id.id for obj in bom.bom_line_ids]
+            if product_ids == sorted(bom_products):
+                res = bom.product_id
+                print 'bingo!', res
+                break
+        return res
+
+    @api.model
     def create_syncid_data(self, odoo_id, magento_id):
         syncid_data = {}
         syncid_data['model'] = 80 #res.partner model
@@ -248,7 +262,7 @@ class magento_task(models.Model):
         }
 
         address_data = {}
-        address_data['name'] = data['customer_firstname'] + ' ' + data['customer_lastname']
+        address_data['name'] = (data['customer_firstname'] or '') + ' ' + (data['customer_lastname'] or '')
         # address_data['street'] = data['street']
         # address_data['city'] = data['city']
         # address_data['zip'] = data['postcode']
@@ -299,6 +313,9 @@ class magento_task(models.Model):
         for i in orders:
             if i['state'] in ['new', 'processing']:
                 m_orders_list.append('MAG-'+i['increment_id'])
+            elif i['payment']:
+                if i['payment']['method'] == 'paypal_standard' and i['state'] == 'pending_payment':
+                    m_orders_list.append('MAG-'+i['increment_id'])
 
         #check which sale orders are allready imported in odoo
         orders_to_update = []
@@ -364,6 +381,11 @@ class magento_task(models.Model):
         for i in orders:
             if i['state'] in ['new', 'processing']:
                 m_orders_list.append('MAG-'+i['increment_id'])
+            elif i['payment']:
+                if i['payment']['method'] == 'paypal_standard' and i['state'] == 'pending_payment':
+                    m_orders_list.append('MAG-'+i['increment_id'])
+
+
 
         #check which sale orders are allready imported in odoo
         orders_to_process = []
@@ -419,20 +441,68 @@ class magento_task(models.Model):
             #TODO: add payment_mode info to saleorder
             o_saleorder = self.env['sale.order'].create(saleorder_data)
 
-            #Create sale order lines data:
-            bundles = []
+            #Create sale order lines data:            
+            bundle_product = None
+            to_ignore = []
             configurable = {}
             for line in order['items']:
+
+                if line['item_id'] in to_ignore:
+                    continue
+
                 saleorder_line_data = {}
                 saleorder_line_data['price_unit'] = 0
+                saleorder_line_data['order_id'] = o_saleorder.id
+                saleorder_line_data['product_uom'] = PRODUCT_UOM
+                saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
+                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
 
                 #simple, configurable and bundle logic
+                
                 if line['product_type'] == 'bundle':
-                    bundles.append(int(line['item_id']))
-                    continue
+                    bundle_ok = False
+                    bundles_parts = []
+                    to_ignore.append(line['item_id'])
+
+                    #search all the items of this bundle in the order
+                    for bline in order['items']:
+                        if bline['parent_item_id'] == line['item_id']:
+                            p = self.env['product.product'].search([('default_code', '=', bline['sku']),('active','=',True)])
+                            if p:
+                                bundles_parts.append(p.id)
+                            to_ignore.append(bline['item_id'])
+
+                    #search for the proper bom and result product and save it
+                    if bundles_parts:
+                        print 'entro if bundles_parts'
+                        bundle_product = self.get_bom_product(bundles_parts)
+                        print 'vuelvo get_bom_product', bundle_product
+                        if bundle_product:
+                            saleorder_line_data['price_unit'] = line['base_original_price']
+                            saleorder_line_data['product_id'] = bundle_product.id
+                            if bundle_product.default_code:
+                                saleorder_line_data['name'] = '[%s] %s' % (bundle_product.default_code, line['name'])
+                            else:
+                                saleorder_line_data['name'] = line['name']
+                            o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
+                            bundle_ok = True
+                    
+                    #if everything went OK skip following logic     
+                    if bundle_ok:
+                        continue
+                    #else save a sync-error line
+                    else:
+                        saleorder_line_data['product_id'] = 15414 #sync-error product
+                        saleorder_line_data['name'] = '[BUNDLE] ' + line['name']
+                        o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
+                        continue
+                
+
                 if line['product_type'] == 'configurable':
                     configurable[line['item_id']] = float(line['base_original_price'])
                     continue
+                
+
                 if line['product_type'] == 'simple':
                     if line['parent_item_id']:
                         if line['parent_item_id'] in configurable:
@@ -444,7 +514,7 @@ class magento_task(models.Model):
                         if line['base_original_price']:
                             saleorder_line_data['price_unit'] = float(line['base_original_price'])
                 
-                saleorder_line_data['order_id'] = o_saleorder.id
+                
 
                 product = self.env['product.product'].search([('default_code', '=', line['sku']),('active','=',True)])
                 if product:
@@ -458,9 +528,7 @@ class magento_task(models.Model):
                     saleorder_line_data['name'] = line['name']
                 
                 # saleorder_line_data['name'] = line['name']
-                saleorder_line_data['product_uom'] = PRODUCT_UOM
-                saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
-                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
+                
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
 
@@ -643,7 +711,7 @@ class magento_task(models.Model):
 
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
-        magento_filter = {'product_id':{'from':32085}}
+        magento_filter = {'product_id':{'from':34180}}
         
         magento_products = m.catalog_product.list(magento_filter)
         
