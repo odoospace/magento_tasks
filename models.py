@@ -598,7 +598,7 @@ class magento_task(models.Model):
                 saleorder_line_data = {}
                 saleorder_line_data['order_id'] = o_saleorder.id
                 saleorder_line_data['product_uom'] = PRODUCT_UOM
-                saleorder_line_data['name'] = 'Puntos web ' + float(order['money_for_points']) + ' puntos' 
+                saleorder_line_data['name'] = 'Puntos web ' + str(float(order['money_for_points'])) + ' puntos' 
                 saleorder_line_data['product_id'] = 21653 #product 'PUNTOS WEB'
                 saleorder_line_data['product_uom_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['money_for_points'])
