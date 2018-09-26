@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from openerp import models, fields, api
+from openerp.osv.orm import except_orm
+from openerp.exceptions import UserError
 from pprint import pprint
 import json
 import sys
@@ -592,6 +594,16 @@ class magento_task(models.Model):
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)                
 
+            if order['money_for_points']:
+                saleorder_line_data = {}
+                saleorder_line_data['order_id'] = o_saleorder.id
+                saleorder_line_data['product_uom'] = PRODUCT_UOM
+                saleorder_line_data['name'] = 'Puntos web ' + float(order['money_for_points']) + ' puntos' 
+                saleorder_line_data['product_id'] = 21653 #product 'PUNTOS WEB'
+                saleorder_line_data['product_uom_qty'] = 1
+                saleorder_line_data['price_unit'] = float(order['money_for_points'])
+                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
+                o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
     #PRODUCT BRAND
     #PRODUCT BRAND
@@ -796,7 +808,7 @@ class StockPicking(models.Model):
         if vals.get('carrier_tracking_ref'):
             print vals
             for i in self.browse(cr, uid, ids, context=context):
-                if 'MAG' in i.origin:
+                if i.origin and 'MAG' in i.origin:
                     print 'Adding tracking to Magento Order...', i.origin
                     m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
                     magento_id = i.origin[4:]
@@ -849,8 +861,12 @@ class stock_move(models.Model):
                     if products_stock_dict[i] > 0:
                         is_in_stock = '1'
                     # print 'is_in_stock', is_in_stock
-                    m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
-        
+                    try:
+                        m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
+                    except:
+                        obj = product_syncid_reference[0].object()
+                        raise UserError("Error syncing with magento! Product doesn't exist: %s - %s" % (obj.name, obj.default_code))
+                        return True
         return result
 
 #This controls the inventory adjustment
