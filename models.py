@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from openerp import models, fields, api
+from openerp import models, fields, api, exceptions, _
 from openerp.osv.orm import except_orm
 from openerp.exceptions import UserError
 from pprint import pprint
@@ -313,7 +313,7 @@ class magento_task(models.Model):
         #filter orders to process state in ['new', 'processing']
         m_orders_list = []
         for i in orders:
-            if i['state'] in ['new', 'processing']:
+            if i['state'] in ['new', 'processing', 'payment_review']:
                 m_orders_list.append('MAG-'+i['increment_id'])
             elif i['state'] in ['pending_payment']:
                 order = m.sales_order.info({'increment_id': i['increment_id']})
@@ -385,7 +385,7 @@ class magento_task(models.Model):
         #filter orders to process state in ['new', 'processing']
         m_orders_list = []
         for i in orders:
-            if i['state'] in ['new', 'processing']:
+            if i['state'] in ['new', 'processing', 'payment_review']:
                 m_orders_list.append('MAG-'+i['increment_id'])
             elif i['state'] in ['pending_payment']:
                 order = m.sales_order.info({'increment_id': i['increment_id']})
@@ -730,7 +730,7 @@ class magento_task(models.Model):
 
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
-        magento_filter = {'product_id':{'from':34180}}
+        magento_filter = {'product_id':{'from':35783}}
         
         magento_products = m.catalog_product.list(magento_filter)
         
@@ -814,7 +814,12 @@ class StockPicking(models.Model):
                     magento_id = i.origin[4:]
                     shipment = m.sales_order_shipment.create(magento_id)
                     track = m.sales_order_shipment.addTrack(int(shipment), 'custom', i.carrier_id.name, vals['carrier_tracking_ref'] )
-                    order = m.sales_order.addComment(magento_id, 'completed', 'Completado')
+                    #order = m.sales_order.addComment(magento_id, 'completed', 'Completado')
+                    try:
+                        invoice = m.sales_order_invoice.create(magento_id)
+                    except:
+                        print '++ Factura ya existente en magento!!', magento_id
+                        continue
         return res
 
 
@@ -874,6 +879,24 @@ class StockInventory(models.Model):
 
     _inherit = "stock.inventory"
 
+    @api.multi
+    def check_products(self):
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        error_msg = 'Products not found in sync table:\n'
+        error_sync = ''
+        error_mag = 'Products not found in magento:\n'
+        for inventory_line in self.line_ids:
+            domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,inventory_line.product_id.product_tmpl_id.id)]
+            product_syncid_references = self.env['syncid.reference'].search(domain)
+            if not product_syncid_references:
+                error_sync += inventory_line.product_id.name + '\n'
+            else:
+                try:
+                    magento_product = m.catalog_product.info(product_syncid_references[0].source_id)
+                except:
+                    error_mag += inventory_line.product_id.name + ' - ' +  inventory_line.product_id.id + ' - ' +  product_syncid_references[0].source_id + '\n'
+        raise exceptions.Warning(error_msg + error_sync + error_mag)
+
     #inherited method to add MAGENTO STOCK SYNC when a Inventory Adjustments is validated
     def action_done(self, cr, uid, ids, context=None):
         """ Finish the inventory
@@ -890,13 +913,13 @@ class StockInventory(models.Model):
 
             m_check = False
             m_plist = []
-            if len(inv.line_ids) >1:
-                print 'Multiple sync stock inventory adjunstment...Fetching catalog for checks'
-                m_check = True
-                m_products = m.catalog_product.list()
-                for i in m_products:
-                    m_plist.append(int(i['product_id']))
-                print 'Catalog properly fetched!'
+            # if len(inv.line_ids) >1:
+            #     print 'Multiple sync stock inventory adjunstment...Fetching catalog for checks'
+            #     m_check = True
+            #     m_products = m.catalog_product.list()
+            #     for i in m_products:
+            #         m_plist.append(int(i['product_id']))
+            #     print 'Catalog properly fetched!'
 
 
             for inventory_line in inv.line_ids:
@@ -911,16 +934,17 @@ class StockInventory(models.Model):
                         is_in_stock = '1'
 
                     #add error tolerance
-                    if not m_check:
+                    # if not m_check:
+                    if product_syncid_reference:
                         #found! update it!
                         m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
-                    else:
-                        if int(product_syncid_reference[0].source_id) in m_plist:
-                            m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
-                        else:
-                            #not found! manage error
-                            # self.pool.get("product.template").write(inventory_line.product_id.product_tmpl_id.id, {'magento_sync': True, 'magento_sync_date': datetime.now()})
-                            inventory_line.product_id.product_tmpl_id.write({'magento_sync': True, 'magento_sync_date': datetime.now()})
+                    # else:
+                    #     if int(product_syncid_reference[0].source_id) in m_plist:
+                    #         m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
+                    #     else:
+                    #         #not found! manage error
+                    #         # self.pool.get("product.template").write(inventory_line.product_id.product_tmpl_id.id, {'magento_sync': True, 'magento_sync_date': datetime.now()})
+                    #         inventory_line.product_id.product_tmpl_id.write({'magento_sync': True, 'magento_sync_date': datetime.now()})
         return True
 
                 
