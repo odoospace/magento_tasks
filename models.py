@@ -807,7 +807,7 @@ class StockPicking(models.Model):
         res = super(StockPicking, self).write(cr, uid, ids, vals, context=context)
         if vals.get('carrier_tracking_ref'):
             print vals
-            if vals.get('carrier_tracking_ref') != 'GENERATING...'
+            if vals.get('carrier_tracking_ref') != 'GENERATING...':
                 for i in self.browse(cr, uid, ids, context=context):
                     if i.origin and 'MAG' in i.origin:
                         print 'Adding tracking to Magento Order...', i.origin
