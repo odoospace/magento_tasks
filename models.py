@@ -807,19 +807,20 @@ class StockPicking(models.Model):
         res = super(StockPicking, self).write(cr, uid, ids, vals, context=context)
         if vals.get('carrier_tracking_ref'):
             print vals
-            for i in self.browse(cr, uid, ids, context=context):
-                if i.origin and 'MAG' in i.origin:
-                    print 'Adding tracking to Magento Order...', i.origin
-                    m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-                    magento_id = i.origin[4:]
-                    shipment = m.sales_order_shipment.create(magento_id)
-                    track = m.sales_order_shipment.addTrack(int(shipment), 'custom', i.carrier_id.name, vals['carrier_tracking_ref'] )
-                    #order = m.sales_order.addComment(magento_id, 'completed', 'Completado')
-                    try:
-                        invoice = m.sales_order_invoice.create(magento_id)
-                    except:
-                        print '++ Factura ya existente en magento!!', magento_id
-                        continue
+            if vals.get('carrier_tracking_ref') != 'GENERATING...'
+                for i in self.browse(cr, uid, ids, context=context):
+                    if i.origin and 'MAG' in i.origin:
+                        print 'Adding tracking to Magento Order...', i.origin
+                        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+                        magento_id = i.origin[4:]
+                        shipment = m.sales_order_shipment.create(magento_id)
+                        track = m.sales_order_shipment.addTrack(int(shipment), 'custom', i.carrier_id.name, vals['carrier_tracking_ref'] )
+                        #order = m.sales_order.addComment(magento_id, 'completed', 'Completado')
+                        try:
+                            invoice = m.sales_order_invoice.create(magento_id)
+                        except:
+                            print '++ Factura ya existente en magento!!', magento_id
+                            continue
         return res
 
 
