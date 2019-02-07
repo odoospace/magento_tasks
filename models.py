@@ -112,7 +112,7 @@ class SaleOrder(models.Model):
             if 'MAG' in item.name and item.state == 'draft':
                 magento_id = item.name[4:]
                 order = m.sales_order.info({'increment_id': magento_id})
-                _logger.info('*** ', order['increment_id'])
+                _logger.info('*** %s' % order['increment_id'])
                 if order['status_history']:
                     note = '===============================\n'
                     for j in order['status_history']:
@@ -407,7 +407,7 @@ class magento_task(models.Model):
                 orders_to_process.append(i)
             
         #processing sale orders:
-        _logger.info('*** Total orders to process', len(orders_to_process))
+        _logger.info('*** Total orders to process %s' % len(orders_to_process))
 
         for i in orders_to_process:
             _logger.info('*** Processing... %s' % i)
@@ -633,7 +633,7 @@ class magento_task(models.Model):
 
             if not reference:
                 #create brand and syncid
-                _logger.info('*** creating new brand!', b['label'])
+                _logger.info('*** creating new brand! %s' % b['label'])
                 data = {
                     'name': b['label'],
                 }
@@ -701,7 +701,7 @@ class magento_task(models.Model):
                 }
                 if categories[i]['parent']:
                     data['parent_id'] = self.env['syncid.reference'].search([('model', '=', 184), ('source', '=', 1), ('source_id', '=', categories[i]['parent'])])[0].odoo_id
-                _logger.info('*** **', categories[i]['id'], categories[i]['name'], categories[i]['parent'], data)
+                _logger.info('*** ** %s %s %s %s' % (categories[i]['id'], categories[i]['name'], categories[i]['parent'], data))
                 category_id = self.env['product.category'].create(data)
 
                 data_sync = {
@@ -711,7 +711,7 @@ class magento_task(models.Model):
                     'source_id': i
                 }
                 sync_id = self.env['syncid.reference'].create(data_sync)
-                _logger.info('*** new category...', categories[i]['name'], sync_id)
+                _logger.info('*** new category... %s %s' % (categories[i]['name'], sync_id))
             
     #PRODUCT SYNC
     #PRODUCT SYNC
@@ -740,14 +740,14 @@ class magento_task(models.Model):
         _logger.info('*** working...')
         con = 1
         for p in magento_products:
-            _logger.info('*** ', p['product_id'])
+            _logger.info('*** %s' % p['product_id'])
             if con % 500 == 0:
                 _logger.info('*** Syncing magento products (%i - %i)' % (con, len(magento_products)))
             con +=1
             reference = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('source_id', '=' ,p['product_id'])])
             if not reference and p['type'] == 'simple':
                 #create product and syncid
-                _logger.info('*** creating new product!', p['name'])
+                _logger.info('*** creating new product! %s' % p['name'])
                 pp = m.catalog_product.info(p['product_id'])
                 categ_ids = []
                 categ_id = None
@@ -799,11 +799,11 @@ class StockPicking(models.Model):
     def write(self, cr, uid, ids, vals, context=None):
         res = super(StockPicking, self).write(cr, uid, ids, vals, context=context)
         if vals.get('carrier_tracking_ref'):
-            _logger.info('*** ',vals)
+            _logger.info('***  %s' % vals)
             if vals.get('carrier_tracking_ref') != 'GENERATING...':
                 for i in self.browse(cr, uid, ids, context=context):
                     if i.origin and 'MAG' in i.origin:
-                        _logger.info('*** Adding tracking to Magento Order...', i.origin)
+                        _logger.info('*** Adding tracking to Magento Order... %s' % i.origin)
                         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
                         magento_id = i.origin[4:]
                         shipment = m.sales_order_shipment.create(magento_id)
@@ -812,7 +812,7 @@ class StockPicking(models.Model):
                         try:
                             invoice = m.sales_order_invoice.create(magento_id)
                         except:
-                            _logger.info('*** ++ Factura ya existente en magento!!', magento_id)
+                            _logger.info('*** ++ Factura ya existente en magento!! %s' %  magento_id)
                             continue
         return res
 
