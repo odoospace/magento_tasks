@@ -137,11 +137,11 @@ class magento_task(models.Model):
         product_ids.sort()
         boms =[obj.bom_id for obj in self.env['mrp.bom.line'].search([('product_id', '=', product_ids[0])])]
         for bom in boms:
-            _logger.info('*** ', bom, boms)
+            # _logger.info('*** ', bom, boms)
             bom_products = [obj.product_id.id for obj in bom.bom_line_ids]
             if product_ids == sorted(bom_products):
                 res = bom.product_id
-                _logger.info('*** bingo!', res)
+                # _logger.info('*** bingo!', res)
                 break
         return res
 
@@ -333,10 +333,10 @@ class magento_task(models.Model):
             if o_saleorder:
                 orders_to_update.append(i)
 
-        _logger.info('*** Total orders to update', len(orders_to_update))
+        _logger.info('*** Total orders to update %i' % len(orders_to_update))
         
         for i in orders_to_update:
-            _logger.info('*** Processing...', i)
+            _logger.info('*** Processing... %s' % i)
             #checking sale order
             odoo_order = self.env['sale.order'].search([('name', '=', i),('state', '=', 'draft')])
             if odoo_order:
@@ -410,7 +410,7 @@ class magento_task(models.Model):
         _logger.info('*** Total orders to process', len(orders_to_process))
 
         for i in orders_to_process:
-            _logger.info('*** Processing...', i)
+            _logger.info('*** Processing... %s' % i)
             #fetching order info
             order = m.sales_order.info({'increment_id': i[4:]})
 
@@ -488,7 +488,7 @@ class magento_task(models.Model):
                     if bundles_parts:
                         _logger.info('*** entro if bundles_parts')
                         bundle_product = self.get_bom_product(bundles_parts)
-                        _logger.info('*** vuelvo get_bom_product', bundle_product)
+                        # _logger.info('*** vuelvo get_bom_product', bundle_product)
                         if bundle_product:
                             saleorder_line_data['price_unit'] = line['base_original_price']
                             saleorder_line_data['product_id'] = bundle_product.id
@@ -742,7 +742,7 @@ class magento_task(models.Model):
         for p in magento_products:
             _logger.info('*** ', p['product_id'])
             if con % 500 == 0:
-                _logger.info('*** Syncing magento products (%s - %s)' % (con, len(magento_products)))
+                _logger.info('*** Syncing magento products (%i - %i)' % (con, len(magento_products)))
             con +=1
             reference = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('source_id', '=' ,p['product_id'])])
             if not reference and p['type'] == 'simple':
