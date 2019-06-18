@@ -264,6 +264,8 @@ class magento_task(models.Model):
             '6':3, #Taller
             '7':4, #Taler NO VAT
             '8':5, #TTQ
+            '9':11,#TTQ NO VAT
+
         }
 
         address_data = {}
@@ -323,6 +325,12 @@ class magento_task(models.Model):
                 if order:
                     if order['payment']:
                         if order['payment']['method'] == 'paypal_standard':
+                            m_orders_list.append('MAG-'+i['increment_id'])
+            elif i['state'] in ['completed'] and i['status'] in ['processing']:
+                order = m.sales_order.info({'increment_id': i['increment_id']})
+                if order:
+                    if order['payment']:
+                        if order['payment']['method'] == 'multibanco':
                             m_orders_list.append('MAG-'+i['increment_id'])
 
 
@@ -395,6 +403,12 @@ class magento_task(models.Model):
                 if order:
                     if order['payment']:
                         if order['payment']['method'] == 'paypal_standard':
+                            m_orders_list.append('MAG-'+i['increment_id'])
+            elif i['state'] in ['completed'] and i['status'] in ['processing']:
+                order = m.sales_order.info({'increment_id': i['increment_id']})
+                if order:
+                    if order['payment']:
+                        if order['payment']['method'] == 'multibanco':
                             m_orders_list.append('MAG-'+i['increment_id'])
 
 
