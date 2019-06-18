@@ -326,7 +326,7 @@ class magento_task(models.Model):
                     if order['payment']:
                         if order['payment']['method'] == 'paypal_standard':
                             m_orders_list.append('MAG-'+i['increment_id'])
-            elif i['state'] in ['completed'] and i['status'] in ['processing']:
+            elif i['state'] in ['complete'] and i['status'] in ['processing']:
                 order = m.sales_order.info({'increment_id': i['increment_id']})
                 if order:
                     if order['payment']:
@@ -404,7 +404,7 @@ class magento_task(models.Model):
                     if order['payment']:
                         if order['payment']['method'] == 'paypal_standard':
                             m_orders_list.append('MAG-'+i['increment_id'])
-            elif i['state'] in ['completed'] and i['status'] in ['processing']:
+            elif i['state'] in ['complete'] and i['status'] in ['processing']:
                 order = m.sales_order.info({'increment_id': i['increment_id']})
                 if order:
                     if order['payment']:
