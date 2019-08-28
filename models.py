@@ -747,7 +747,7 @@ class magento_task(models.Model):
 
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
-        magento_filter = {'product_id':{'from':35783}}
+        magento_filter = {'product_id':{'from':45650}}
         
         magento_products = m.catalog_product.list(magento_filter)
         
@@ -814,9 +814,9 @@ class StockPicking(models.Model):
         res = super(StockPicking, self).write(cr, uid, ids, vals, context=context)
         if vals.get('carrier_tracking_ref'):
             _logger.info('***  %s' % vals)
-            if vals.get('carrier_tracking_ref') != 'GENERATING...':
+            if vals.get('carrier_tracking_ref') != 'GENERATING...' and vals.get('carrier_tracking_ref'):
                 for i in self.browse(cr, uid, ids, context=context):
-                    if i.origin and 'MAG' in i.origin:
+                    if i.origin and 'MAG' in i.origin and not i.carrier_file_generated:
                         _logger.info('*** Adding tracking to Magento Order... %s' % i.origin)
                         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
                         magento_id = i.origin[4:]
