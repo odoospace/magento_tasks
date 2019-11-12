@@ -747,9 +747,8 @@ class magento_task(models.Model):
 
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
-        reference = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1)])
-        _logger.info('*** Fetching magento products...', reference[0], reference[0].id)
-        magento_filter = {'product_id':{'from':46531}}
+        reference = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1)], order='id desc')
+        magento_filter = {'product_id':{'from':reference[0].source_id}}
         
         magento_products = m.catalog_product.list(magento_filter)
         
