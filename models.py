@@ -1,17 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from openerp import models, fields, api, exceptions, _
-from openerp.osv.orm import except_orm
-from openerp.exceptions import UserError
+from openerp import models, fields, api
 from pprint import pprint
 import json
 import sys
 from datetime import datetime, date, timedelta
 from magento import MagentoAPI
 import config
-import logging
-
-_logger = logging.getLogger(__name__)
 
 # http://stackoverflow.com/questions/1305532/convert-python-dict-to-object (last one)
 class dict2obj(dict):
@@ -84,7 +79,7 @@ class SaleOrder(models.Model):
     @api.multi
     def action_cancel(self):
         if 'MAG' in self.name and self.state == 'draft':
-            _logger.info('*** Canceling Magento Order...')
+            print 'Canceling Magento Order...'
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
             magento_id = self.name[4:]
             order = m.sales_order.info(magento_id)
@@ -103,16 +98,16 @@ class SaleOrder(models.Model):
 
     @api.multi
     def update_magento_orders(self):
-        _logger.info('*** Updating Magento Orders from tree view')
+        print 'Updating Magento Orders from tree view'
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         con = 1
         for item in self:
-            _logger.info('*** Updating %s/%s' %  (con, len(self)))
+            print 'Updating %s/%s' %  (con, len(self))
             con +=1
             if 'MAG' in item.name and item.state == 'draft':
                 magento_id = item.name[4:]
                 order = m.sales_order.info({'increment_id': magento_id})
-                _logger.info('*** %s' % order['increment_id'])
+                print order['increment_id']
                 if order['status_history']:
                     note = '===============================\n'
                     for j in order['status_history']:
@@ -132,30 +127,17 @@ class magento_task(models.Model):
     #SALEORDERS
     #SALEORDERS
     @api.model
-    def get_bom_product(self, product_ids):
-        res = None
-        product_ids.sort()
-        boms =[obj.bom_id for obj in self.env['mrp.bom.line'].search([('product_id', '=', product_ids[0])])]
-        for bom in boms:
-            # _logger.info('*** ', bom, boms)
-            bom_products = [obj.product_id.id for obj in bom.bom_line_ids]
-            if product_ids == sorted(bom_products):
-                res = bom.product_id
-                # _logger.info('*** bingo!', res)
-                break
-        return res
-
-    @api.model
-    def create_syncid_data(self, odoo_id, magento_id):
+    def create_syncid_data(self, odoo_id, magento_id, scope=None):
         syncid_data = {}
         syncid_data['model'] = 80 #res.partner model
         syncid_data['source'] = 1 #syncid magento source
         syncid_data['odoo_id'] = odoo_id
         syncid_data['source_id'] = magento_id
+        syncid_data['scope'] = scope
         res = self.env['syncid.reference'].create(syncid_data)
 
     @api.model
-    def create_partner_address(self, data, partner_id, mode, address_id=None):
+    def create_partner_address(self, data, partner_id, mode, address_id=None, scope=None):
         #method to create a delivery or invoice address given magento address data
         
         #dictionary to match spanish region_id with odoo state code
@@ -243,7 +225,10 @@ class magento_task(models.Model):
         if mode == 'create':
             res = self.env['res.partner'].create(address_data)
             #create syncid reference
-            res_syncid = self.create_syncid_data(res, data['customer_address_id'])
+            if scope:
+                res_syncid = self.create_syncid_data(res, data['customer_address_id'], scope)
+            else:
+                res_syncid = self.create_syncid_data(res, data['address_id'], scope)
         
         else:
             address_data['id'] = address_id
@@ -254,7 +239,7 @@ class magento_task(models.Model):
         return address_id or res
 
     @api.model
-    def create_partner(self, data):
+    def create_partner(self, data, scope=None):
         #method to create basic partner data
         #TODO: maybe add more accurate data in address
         customer_tags = {
@@ -265,11 +250,10 @@ class magento_task(models.Model):
             '7':4, #Taler NO VAT
             '8':5, #TTQ
             '9':11,#TTQ NO VAT
-
         }
 
         address_data = {}
-        address_data['name'] = (data['customer_firstname'] or '') + ' ' + (data['customer_lastname'] or '')
+        address_data['name'] = data['customer_firstname'] + ' ' + data['customer_lastname']
         # address_data['street'] = data['street']
         # address_data['city'] = data['city']
         # address_data['zip'] = data['postcode']
@@ -286,7 +270,7 @@ class magento_task(models.Model):
 
         res = self.env['res.partner'].create(address_data)
 
-        res_syncid = self.create_syncid_data(res, data['customer_id'])
+        res_syncid = self.create_syncid_data(res, data['customer_id'], scope)
         self.env.cr.commit()
 
         return res
@@ -307,7 +291,7 @@ class magento_task(models.Model):
            return
 
         #testing
-        _logger.info('*** Fetching magento orders to update...')
+        print 'Fetching magento orders to update...'
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
         order_filter = {'created_at':{'from': date.today().strftime('%Y-%m-%d')}}
@@ -318,21 +302,8 @@ class magento_task(models.Model):
         #filter orders to process state in ['new', 'processing']
         m_orders_list = []
         for i in orders:
-            if i['state'] in ['new', 'processing', 'payment_review']:
+            if i['state'] in ['new', 'processing']:
                 m_orders_list.append('MAG-'+i['increment_id'])
-            elif i['state'] in ['pending_payment']:
-                order = m.sales_order.info({'increment_id': i['increment_id']})
-                if order:
-                    if order['payment']:
-                        if order['payment']['method'] == 'paypal_standard':
-                            m_orders_list.append('MAG-'+i['increment_id'])
-            elif i['state'] in ['complete'] and i['status'] in ['processing']:
-                order = m.sales_order.info({'increment_id': i['increment_id']})
-                if order:
-                    if order['payment']:
-                        if order['payment']['method'] == 'multibanco':
-                            m_orders_list.append('MAG-'+i['increment_id'])
-
 
         #check which sale orders are allready imported in odoo
         orders_to_update = []
@@ -341,10 +312,10 @@ class magento_task(models.Model):
             if o_saleorder:
                 orders_to_update.append(i)
 
-        _logger.info('*** Total orders to update %i' % len(orders_to_update))
+        print 'Total orders to update', len(orders_to_update)
         
         for i in orders_to_update:
-            _logger.info('*** Processing... %s' % i)
+            print 'Processing...', i
             #checking sale order
             odoo_order = self.env['sale.order'].search([('name', '=', i),('state', '=', 'draft')])
             if odoo_order:
@@ -378,7 +349,7 @@ class magento_task(models.Model):
            return
 
         #testing
-        _logger.info('*** Fetching magento orders...')
+        print 'Fetching magento orders...'
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
 
         S_IVA_21S = self.env['account.tax'].search([('description', '=', 'S_IVA21B')])
@@ -396,22 +367,8 @@ class magento_task(models.Model):
         #filter orders to process state in ['new', 'processing']
         m_orders_list = []
         for i in orders:
-            if i['state'] in ['new', 'processing', 'payment_review']:
+            if i['state'] in ['new', 'processing']:
                 m_orders_list.append('MAG-'+i['increment_id'])
-            elif i['state'] in ['pending_payment']:
-                order = m.sales_order.info({'increment_id': i['increment_id']})
-                if order:
-                    if order['payment']:
-                        if order['payment']['method'] == 'paypal_standard':
-                            m_orders_list.append('MAG-'+i['increment_id'])
-            elif i['state'] in ['complete'] and i['status'] in ['processing']:
-                order = m.sales_order.info({'increment_id': i['increment_id']})
-                if order:
-                    if order['payment']:
-                        if order['payment']['method'] == 'multibanco':
-                            m_orders_list.append('MAG-'+i['increment_id'])
-
-
 
         #check which sale orders are allready imported in odoo
         orders_to_process = []
@@ -421,10 +378,10 @@ class magento_task(models.Model):
                 orders_to_process.append(i)
             
         #processing sale orders:
-        _logger.info('*** Total orders to process %s' % len(orders_to_process))
+        print 'Total orders to process', len(orders_to_process)
 
         for i in orders_to_process:
-            _logger.info('*** Processing... %s' % i)
+            print 'Processing...', i
             #fetching order info
             order = m.sales_order.info({'increment_id': i[4:]})
 
@@ -433,28 +390,55 @@ class magento_task(models.Model):
 
             #TODO:partner
             m_customer_id = order['customer_id']
-            syncid_customer = self.env['syncid.reference'].search([('source','=',1),('model','=',80),('source_id','=',m_customer_id)])
-            if syncid_customer:
-                o_customer_id = syncid_customer[0].odoo_id
-            else:
-                o_customer_id = self.create_partner(order).id
 
-            #TODO:billing
-            m_billing_address_id = order['billing_address']['customer_address_id']
-            syncid_billing = self.env['syncid.reference'].search([('source','=',1),('model','=',80),('source_id','=',m_billing_address_id)])
-            if syncid_billing:
-                o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'update', syncid_billing[0].odoo_id)
+            #new clients hack to prevent bad assign while cleaning
+            im_customer_id = int(order['customer_id'])
+            if im_customer_id > 63972:
+                #its a new client, use the new logic
+                syncid_customer = self.env['syncid.reference'].search([('scope', '=', 'client'),('source','=',1),('model','=',80),('source_id','=',m_customer_id)])
+                if syncid_customer:
+                    o_customer_id = syncid_customer[0].odoo_id
+                else:
+                    o_customer_id = self.create_partner(order, 'client').id
 
-            else:
-                o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'create', None).id
-            
-            #TODO:shipping
-            m_shipping_addess_id = order['shipping_address']['customer_address_id']
-            syncid_shipping = self.env['syncid.reference'].search([('source','=',1),('model','=',80),('source_id','=',m_shipping_addess_id)])
-            if syncid_shipping:
-                o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_customer[0].odoo_id)
-            else:
-                o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'create', None).id
+                #TODO:billing
+                m_billing_address_id = order['billing_address']['customer_address_id']
+                syncid_billing = self.env['syncid.reference'].search([('scope', '=', 'billing'),('source','=',1),('model','=',80),('source_id','=',m_billing_address_id)])
+                if syncid_billing:
+                    o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'update', syncid_billing[0].odoo_id)
+                else:
+                    o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'create', None, 'billing').id
+                
+                #TODO:shipping
+                m_shipping_addess_id = order['shipping_address']['customer_address_id']
+                syncid_shipping = self.env['syncid.reference'].search([('scope', '=', 'shipment'),('source','=',1),('model','=',80),('source_id','=',m_shipping_addess_id)])
+                if syncid_shipping:
+                    o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_customer[0].odoo_id)
+                else:
+                    o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'create', None, 'shipment').id
+
+            else:#old way
+                syncid_customer = self.env['syncid.reference'].search([('scope','=', None),('source','=',1),('model','=',80),('source_id','=',m_customer_id)])
+                if syncid_customer:
+                    o_customer_id = syncid_customer[0].odoo_id
+                else:
+                    o_customer_id = self.create_partner(order).id
+
+                #TODO:billing
+                m_billing_address_id = order['billing_address_id']
+                syncid_billing = self.env['syncid.reference'].search([('scope','=', None),('source','=',1),('model','=',80),('source_id','=',m_billing_address_id)])
+                if syncid_billing:
+                    o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'update', syncid_billing[0].odoo_id)
+                else:
+                    o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'create', None).id
+                
+                #TODO:shipping
+                m_shipping_addess_id = order['shipping_address_id']
+                syncid_shipping = self.env['syncid.reference'].search([('scope','=', None),('source','=',1),('model','=',80),('source_id','=',m_shipping_addess_id)])
+                if syncid_shipping:
+                    o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_customer[0].odoo_id)
+                else:
+                    o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'create', None).id
 
             
             #Create sale order:
@@ -467,68 +451,20 @@ class magento_task(models.Model):
             #TODO: add payment_mode info to saleorder
             o_saleorder = self.env['sale.order'].create(saleorder_data)
 
-            #Create sale order lines data:            
-            bundle_product = None
-            to_ignore = []
+            #Create sale order lines data:
+            bundles = []
             configurable = {}
             for line in order['items']:
-
-                if line['item_id'] in to_ignore:
-                    continue
-
                 saleorder_line_data = {}
                 saleorder_line_data['price_unit'] = 0
-                saleorder_line_data['order_id'] = o_saleorder.id
-                saleorder_line_data['product_uom'] = PRODUCT_UOM
-                saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
-                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
 
                 #simple, configurable and bundle logic
-                
                 if line['product_type'] == 'bundle':
-                    bundle_ok = False
-                    bundles_parts = []
-                    to_ignore.append(line['item_id'])
-
-                    #search all the items of this bundle in the order
-                    for bline in order['items']:
-                        if bline['parent_item_id'] == line['item_id']:
-                            p = self.env['product.product'].search([('default_code', '=', bline['sku']),('active','=',True)])
-                            if p:
-                                bundles_parts.append(p.id)
-                            to_ignore.append(bline['item_id'])
-
-                    #search for the proper bom and result product and save it
-                    if bundles_parts:
-                        _logger.info('*** entro if bundles_parts')
-                        bundle_product = self.get_bom_product(bundles_parts)
-                        # _logger.info('*** vuelvo get_bom_product', bundle_product)
-                        if bundle_product:
-                            saleorder_line_data['price_unit'] = line['base_original_price']
-                            saleorder_line_data['product_id'] = bundle_product.id
-                            if bundle_product.default_code:
-                                saleorder_line_data['name'] = '[%s] %s' % (bundle_product.default_code, line['name'])
-                            else:
-                                saleorder_line_data['name'] = line['name']
-                            o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
-                            bundle_ok = True
-                    
-                    #if everything went OK skip following logic     
-                    if bundle_ok:
-                        continue
-                    #else save a sync-error line
-                    else:
-                        saleorder_line_data['product_id'] = 15414 #sync-error product
-                        saleorder_line_data['name'] = '[BUNDLE] ' + line['name']
-                        o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
-                        continue
-                
-
+                    bundles.append(int(line['item_id']))
+                    continue
                 if line['product_type'] == 'configurable':
                     configurable[line['item_id']] = float(line['base_original_price'])
                     continue
-                
-
                 if line['product_type'] == 'simple':
                     if line['parent_item_id']:
                         if line['parent_item_id'] in configurable:
@@ -540,7 +476,7 @@ class magento_task(models.Model):
                         if line['base_original_price']:
                             saleorder_line_data['price_unit'] = float(line['base_original_price'])
                 
-                
+                saleorder_line_data['order_id'] = o_saleorder.id
 
                 product = self.env['product.product'].search([('default_code', '=', line['sku']),('active','=',True)])
                 if product:
@@ -554,7 +490,9 @@ class magento_task(models.Model):
                     saleorder_line_data['name'] = line['name']
                 
                 # saleorder_line_data['name'] = line['name']
-                
+                saleorder_line_data['product_uom'] = PRODUCT_UOM
+                saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
+                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
 
@@ -611,16 +549,6 @@ class magento_task(models.Model):
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)                
 
-            if order['money_for_points']:
-                saleorder_line_data = {}
-                saleorder_line_data['order_id'] = o_saleorder.id
-                saleorder_line_data['product_uom'] = PRODUCT_UOM
-                saleorder_line_data['name'] = 'Puntos web ' + str(float(order['money_for_points'])) + ' puntos' 
-                saleorder_line_data['product_id'] = 21653 #product 'PUNTOS WEB'
-                saleorder_line_data['product_uom_qty'] = 1
-                saleorder_line_data['price_unit'] = float(order['money_for_points'])
-                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
-                o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
     #PRODUCT BRAND
     #PRODUCT BRAND
@@ -638,7 +566,7 @@ class magento_task(models.Model):
            return
 
         #testing
-        _logger.info('*** Fetching magento brands...')
+        print 'Fetching magento brands...'
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
         magento_brands = m.catalog_product_attribute.info('manufacturer')['options']
@@ -647,7 +575,7 @@ class magento_task(models.Model):
 
             if not reference:
                 #create brand and syncid
-                _logger.info('*** creating new brand! %s' % b['label'])
+                print 'creating new brand!', b['label']
                 data = {
                     'name': b['label'],
                 }
@@ -695,7 +623,7 @@ class magento_task(models.Model):
                 read_children(data)
 
         #testing
-        _logger.info('*** Fetching magento categorys...')
+        print 'Fetching magento categorys...'
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
         # read categories
@@ -715,7 +643,7 @@ class magento_task(models.Model):
                 }
                 if categories[i]['parent']:
                     data['parent_id'] = self.env['syncid.reference'].search([('model', '=', 184), ('source', '=', 1), ('source_id', '=', categories[i]['parent'])])[0].odoo_id
-                _logger.info('*** ** %s %s %s %s' % (categories[i]['id'], categories[i]['name'], categories[i]['parent'], data))
+                print '**', categories[i]['id'], categories[i]['name'], categories[i]['parent'], data
                 category_id = self.env['product.category'].create(data)
 
                 data_sync = {
@@ -725,7 +653,7 @@ class magento_task(models.Model):
                     'source_id': i
                 }
                 sync_id = self.env['syncid.reference'].create(data_sync)
-                _logger.info('*** new category... %s %s' % (categories[i]['name'], sync_id))
+                print 'new category...', categories[i]['name'], sync_id
             
     #PRODUCT SYNC
     #PRODUCT SYNC
@@ -743,32 +671,38 @@ class magento_task(models.Model):
            return
 
         #testing
-        _logger.info('*** Fetching magento products...')
+        print 'Fetching magento products...'
 
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         
-        reference = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1)], order='id desc')
-        magento_filter = {'product_id':{'from':reference[0].source_id}}
+        magento_filter = {'product_id':{'from':32085}}
         
         magento_products = m.catalog_product.list(magento_filter)
         
-        _logger.info('*** working...')
+        print 'working...'
         con = 1
         for p in magento_products:
-            _logger.info('*** %s' % p['product_id'])
+            print p['product_id']
             if con % 500 == 0:
-                _logger.info('*** Syncing magento products (%i - %i)' % (con, len(magento_products)))
+                print 'Syncing magento products (%s - %s)' % (con, len(magento_products))
             con +=1
+            # print 1
             reference = self.env['syncid.reference'].search([('model', '=', 190), ('source', '=', 1), ('source_id', '=' ,p['product_id'])])
+            # print 2
             if not reference and p['type'] == 'simple':
                 #create product and syncid
-                _logger.info('*** creating new product! %s' % p['name'])
+                print 'creating new product!', p['name']
+                print 3
                 pp = m.catalog_product.info(p['product_id'])
+                print 4
+
                 categ_ids = []
                 categ_id = None
                 for i in pp['category_ids']:
                     if i not in ['169']: # error in magento database
+                        print 5
                         category = self.env['syncid.reference'].search([('model', '=', 184), ('source', '=', 1), ('source_id', '=', str(i))])
+                        print 6
                         if len(category) > 1:
                             raise SystemExit('Product with many categories in syncid: %s' % pp['name'])
                         elif category:
@@ -792,15 +726,18 @@ class magento_task(models.Model):
                     if product_brand_id:
                         data['product_brand_id'] = product_brand_id.odoo_id
 
+                print 7
                 o_product = self.env['product.template'].create(data)
+                print 8
                 data_sync = {
                     'model': 190,
                     'source': 1,
                     'odoo_id': o_product.id,
                     'source_id': pp['product_id'],
                 }
+                print 9
                 sync_id = self.env['syncid.reference'].create(data_sync)
-                _logger.info('*** FINISH')
+                print 'FINISH'
 
 
 #STOCK SYNC
@@ -814,25 +751,15 @@ class StockPicking(models.Model):
     def write(self, cr, uid, ids, vals, context=None):
         res = super(StockPicking, self).write(cr, uid, ids, vals, context=context)
         if vals.get('carrier_tracking_ref'):
-            _logger.info('***  %s' % vals)
-            if vals.get('carrier_tracking_ref') != 'GENERATING...' and vals.get('carrier_tracking_ref'):
-                for i in self.browse(cr, uid, ids, context=context):
-                    if i.origin and 'MAG' in i.origin and not i.carrier_file_generated:
-                        _logger.info('*** Adding tracking to Magento Order... %s' % i.origin)
-                        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-                        magento_id = i.origin[4:]
-                        
-                        try:
-                            shipment = m.sales_order_shipment.create(magento_id)
-                            track = m.sales_order_shipment.addTrack(int(shipment), 'custom', i.carrier_id.name, vals['carrier_tracking_ref'] )
-                        except:
-                            _logger.info('*** ++ Shipment ya existente en magento!! %s' %  magento_id)
-                            
-                        try:
-                            invoice = m.sales_order_invoice.create(magento_id)
-                        except:
-                            _logger.info('*** ++ Factura ya existente en magento!! %s' %  magento_id)
-                            
+            print vals
+            for i in self.browse(cr, uid, ids, context=context):
+                if 'MAG' in i.origin:
+                    print 'Adding tracking to Magento Order...', i.origin
+                    m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+                    magento_id = i.origin[4:]
+                    shipment = m.sales_order_shipment.create(magento_id)
+                    track = m.sales_order_shipment.addTrack(int(shipment), 'custom', i.carrier_id.name, vals['carrier_tracking_ref'] )
+                    order = m.sales_order.addComment(magento_id, 'completed', 'Completado')
         return res
 
 
@@ -847,7 +774,7 @@ class stock_move(models.Model):
 
     #inherited method to add MAGENTO STOCK SYNC when a IN/OUT picking operation is validated
     def action_done(self, cr, uid, ids, context=None):
-        _logger.info('*** entering stock_move action_dome - magento update')
+        print 'entering stock_move action_dome - magento update'
 
         result = super(stock_move, self).action_done(cr, uid, ids,
                                                         context=context)
@@ -868,7 +795,7 @@ class stock_move(models.Model):
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
             con = 1
             for i in products_to_sync:
-                _logger.info('*** sync stock %s/%s - %s' % (con, len(products_to_sync), i))
+                print 'sync stock %s/%s - %s' % (con, len(products_to_sync), i)
                 con +=1
                 domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,i)]
                 product_syncid_references = syncid_obj.search(cr, uid, domain, context=context)
@@ -879,36 +806,14 @@ class stock_move(models.Model):
                     if products_stock_dict[i] > 0:
                         is_in_stock = '1'
                     # print 'is_in_stock', is_in_stock
-                    try:
-                        m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
-                    except:
-                        obj = product_syncid_reference[0].object()
-                        raise UserError("Error syncing with magento! Product doesn't exist: %s - %s" % (obj.name, obj.default_code))
-                        return True
+                    m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
+        
         return result
 
 #This controls the inventory adjustment
 class StockInventory(models.Model):
 
     _inherit = "stock.inventory"
-
-    @api.multi
-    def check_products(self):
-        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
-        error_msg = 'Products not found in sync table:\n'
-        error_sync = ''
-        error_mag = 'Products not found in magento:\n'
-        for inventory_line in self.line_ids:
-            domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,inventory_line.product_id.product_tmpl_id.id)]
-            product_syncid_references = self.env['syncid.reference'].search(domain)
-            if not product_syncid_references:
-                error_sync += inventory_line.product_id.name + '\n'
-            else:
-                try:
-                    magento_product = m.catalog_product.info(product_syncid_references[0].source_id)
-                except:
-                    error_mag += inventory_line.product_id.name + ' - ' +  inventory_line.product_id.id + ' - ' +  product_syncid_references[0].source_id + '\n'
-        raise exceptions.Warning(error_msg + error_sync + error_mag)
 
     #inherited method to add MAGENTO STOCK SYNC when a Inventory Adjustments is validated
     def action_done(self, cr, uid, ids, context=None):
@@ -920,23 +825,23 @@ class StockInventory(models.Model):
         syncid_obj = self.pool.get("syncid.reference")
 
         for inv in self.browse(cr, uid, ids, context=context):
-            _logger.info('*** Initiating sync stock inventory adjustment - %s to process...' % len(inv.line_ids))
+            print 'Initiating sync stock inventory adjustment - %s to process...' % len(inv.line_ids)
             con = 1
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
 
             m_check = False
             m_plist = []
-            # if len(inv.line_ids) >1:
-            #     print 'Multiple sync stock inventory adjunstment...Fetching catalog for checks'
-            #     m_check = True
-            #     m_products = m.catalog_product.list()
-            #     for i in m_products:
-            #         m_plist.append(int(i['product_id']))
-            #     print 'Catalog properly fetched!'
+            if len(inv.line_ids) >1:
+                print 'Multiple sync stock inventory adjunstment...Fetching catalog for checks'
+                m_check = True
+                m_products = m.catalog_product.list()
+                for i in m_products:
+                    m_plist.append(int(i['product_id']))
+                print 'Catalog properly fetched!'
 
 
             for inventory_line in inv.line_ids:
-                _logger.info('*** Syncing inventory_line %s/%s - %s' % (con, len(inv.line_ids), inventory_line.product_id.id))
+                print 'Syncing inventory_line %s/%s - %s' % (con, len(inv.line_ids), inventory_line.product_id.id)
                 con +=1
                 domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,inventory_line.product_id.product_tmpl_id.id)]
                 product_syncid_references = syncid_obj.search(cr, uid, domain, context=context)
@@ -947,17 +852,16 @@ class StockInventory(models.Model):
                         is_in_stock = '1'
 
                     #add error tolerance
-                    # if not m_check:
-                    if product_syncid_reference:
+                    if not m_check:
                         #found! update it!
                         m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
-                    # else:
-                    #     if int(product_syncid_reference[0].source_id) in m_plist:
-                    #         m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
-                    #     else:
-                    #         #not found! manage error
-                    #         # self.pool.get("product.template").write(inventory_line.product_id.product_tmpl_id.id, {'magento_sync': True, 'magento_sync_date': datetime.now()})
-                    #         inventory_line.product_id.product_tmpl_id.write({'magento_sync': True, 'magento_sync_date': datetime.now()})
+                    else:
+                        if int(product_syncid_reference[0].source_id) in m_plist:
+                            m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
+                        else:
+                            #not found! manage error
+                            # self.pool.get("product.template").write(inventory_line.product_id.product_tmpl_id.id, {'magento_sync': True, 'magento_sync_date': datetime.now()})
+                            inventory_line.product_id.product_tmpl_id.write({'magento_sync': True, 'magento_sync_date': datetime.now()})
         return True
 
                 
