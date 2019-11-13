@@ -146,7 +146,7 @@ class magento_task(models.Model):
         return res
 
     @api.model
-    def create_syncid_data(self, odoo_id, magento_id, scope):
+    def create_syncid_data(self, odoo_id, magento_id, scope=None):
         syncid_data = {}
         syncid_data['model'] = 80 #res.partner model
         syncid_data['source'] = 1 #syncid magento source
