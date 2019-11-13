@@ -244,7 +244,7 @@ class magento_task(models.Model):
         if mode == 'create':
             res = self.env['res.partner'].create(address_data)
             #create syncid reference
-            if scope:
+            if scope != None:
                 res_syncid = self.create_syncid_data(res, data['customer_address_id'], scope)
             else:
                 res_syncid = self.create_syncid_data(res, data['address_id'], scope)
@@ -450,7 +450,7 @@ class magento_task(models.Model):
 
                 #TODO:billing
                 m_billing_address_id = order['billing_address']['customer_address_id']
-                if m_billing_address_id:
+                if m_billing_address_id != None:
                     syncid_billing = self.env['syncid.reference'].search([('scope', '=', 'billing'),('source','=',1),('model','=',80),('source_id','=',m_billing_address_id)])
                     if syncid_billing:
                         o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'update', syncid_billing[0].odoo_id)
@@ -460,7 +460,7 @@ class magento_task(models.Model):
                     o_billing_id = o_customer_id
                 #TODO:shipping
                 m_shipping_addess_id = order['shipping_address']['customer_address_id']
-                if m_shipping_addess_id:
+                if m_shipping_addess_id != None:
                     syncid_shipping = self.env['syncid.reference'].search([('scope', '=', 'shipment'),('source','=',1),('model','=',80),('source_id','=',m_shipping_addess_id)])
                     if syncid_shipping:
                         o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_shipping[0].odoo_id)
