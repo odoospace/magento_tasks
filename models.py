@@ -483,7 +483,7 @@ class magento_task(models.Model):
                 m_shipping_addess_id = order['shipping_address_id']
                 syncid_shipping = self.env['syncid.reference'].search([('scope','=', None),('source','=',1),('model','=',80),('source_id','=',m_shipping_addess_id)])
                 if syncid_shipping:
-                    o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_customer[0].odoo_id)
+                    o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_shipping[0].odoo_id)
                 else:
                     o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'create', None).id
 
