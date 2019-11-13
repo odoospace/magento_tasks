@@ -450,19 +450,24 @@ class magento_task(models.Model):
 
                 #TODO:billing
                 m_billing_address_id = order['billing_address']['customer_address_id']
-                syncid_billing = self.env['syncid.reference'].search([('scope', '=', 'billing'),('source','=',1),('model','=',80),('source_id','=',m_billing_address_id)])
-                if syncid_billing:
-                    o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'update', syncid_billing[0].odoo_id)
+                if m_billing_address_id:
+                    syncid_billing = self.env['syncid.reference'].search([('scope', '=', 'billing'),('source','=',1),('model','=',80),('source_id','=',m_billing_address_id)])
+                    if syncid_billing:
+                        o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'update', syncid_billing[0].odoo_id)
+                    else:
+                        o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'create', None, 'billing').id
                 else:
-                    o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'create', None, 'billing').id
-                
+                    o_billing_id = o_customer_id
                 #TODO:shipping
                 m_shipping_addess_id = order['shipping_address']['customer_address_id']
-                syncid_shipping = self.env['syncid.reference'].search([('scope', '=', 'shipment'),('source','=',1),('model','=',80),('source_id','=',m_shipping_addess_id)])
-                if syncid_shipping:
-                    o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_shipping[0].odoo_id)
+                if m_shipping_addess_id:
+                    syncid_shipping = self.env['syncid.reference'].search([('scope', '=', 'shipment'),('source','=',1),('model','=',80),('source_id','=',m_shipping_addess_id)])
+                    if syncid_shipping:
+                        o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'update', syncid_shipping[0].odoo_id)
+                    else:
+                        o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'create', None, 'shipment').id
                 else:
-                    o_shipping_id = self.create_partner_address(order['shipping_address'], o_customer_id, 'create', None, 'shipment').id
+                    o_shipping_id = o_customer_id
 
             else:#old way
                 syncid_customer = self.env['syncid.reference'].search([('scope','=', None),('source','=',1),('model','=',80),('source_id','=',m_customer_id)])
