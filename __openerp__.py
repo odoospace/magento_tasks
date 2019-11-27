@@ -21,6 +21,8 @@
         stock - picking & inventory adjustments
         sale states
         picking tracking ref
+
+        pip install python-magento
     """,
 
     'author': "Impulzia",
