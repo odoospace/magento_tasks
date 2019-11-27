@@ -16,14 +16,15 @@
             <field name="model_id" ref="model_sale_order"></field>
             <field name="state">code</field>
             <field name="condition">True</field>
+            <field name="binding_model_id" ref="sale.model_sale_order" />
             <field name="code">self.update_magento_orders(cr, uid, context['active_ids'], context=context)</field>
         </record>
-        <record id="magento_sync_orders_tree_value" model="ir.values">
+        <!-- <record id="magento_sync_orders_tree_value" model="ir.values">
                 <field name="name">Update magento orders</field>
                 <field name="model">sale.order</field>
                 <field name="key" >action</field>
                 <field name="key2">client_action_multi</field>
                 <field name="value" eval="'ir.actions.server,%d'%magento_sync_orders_tree_action"/>
-        </record>
+        </record> -->
     </data>
 </odoo>

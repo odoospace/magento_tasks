@@ -8,7 +8,7 @@ import json
 import sys
 from datetime import datetime, date, timedelta
 from magento import MagentoAPI
-import config
+from . import config
 import logging
 
 _logger = logging.getLogger(__name__)
