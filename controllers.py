@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from openerp import http
+# from openerp import http
 
 # class MagentoTasks(http.Controller):
 #     @http.route('/magento_tasks/magento_tasks/', auth='public')

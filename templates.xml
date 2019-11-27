@@ -1,4 +1,4 @@
-<openerp>
+<odoo>
     <data>
         <record id="product_template_only_form_view_msync" model="ir.ui.view">
             <field name="name">product_template_only_form_view_msync</field>
@@ -26,4 +26,4 @@
                 <field name="value" eval="'ir.actions.server,%d'%magento_sync_orders_tree_action"/>
         </record>
     </data>
-</openerp>
+</odoo>

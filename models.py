@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from openerp import models, fields, api, exceptions, _
-from openerp.osv.orm import except_orm
-from openerp.exceptions import UserError
+from odoo import models, fields, api, exceptions, _
+from odoo.osv.orm import except_orm
+from odoo.exceptions import UserError
 from pprint import pprint
 import json
 import sys

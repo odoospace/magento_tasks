@@ -1,4 +1,4 @@
-<openerp>
+<odoo>
     <data noupdate="1">
 
         <record id="ir_cron_sync_partners_action" model="ir.cron">
@@ -53,4 +53,4 @@
         </record>
 
    </data>
-</openerp>
+</odoo>
