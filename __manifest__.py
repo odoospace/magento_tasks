@@ -41,8 +41,8 @@
     # always loaded
     'data': [
         # 'security/ir.model.access.csv',
-        'templates.xml',
-        'cron.xml'
+        'views/templates.xml',
+        'data/cron.xml'
     ],
     # only loaded in demonstration mode
     #'demo': [
