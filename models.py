@@ -419,10 +419,16 @@ class magento_task(models.Model):
 
         #check which sale orders are allready imported in odoo
         orders_to_process = []
+        orders_to_check = []
         for i in m_orders_list:
             o_saleorder = self.env['sale.order'].search([('name', '=', i)])
             if not o_saleorder:
-                orders_to_process.append(i)
+                if order['customer_id']: 
+                    orders_to_process.append(i)
+                else:
+                    orders_to_check.append(i)
+
+        _logger.info('*** ORDERS TO CHECK %s' % orders_to_check)
             
         #processing sale orders:
         _logger.info('*** Total orders to process %s' % len(orders_to_process))
