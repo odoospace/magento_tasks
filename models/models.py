@@ -847,8 +847,8 @@ class StockPicking(models.Model):
 
     _inherit = 'stock.picking'
 
-    def write(self, cr, uid, ids, vals, context=None):
-        res = super(StockPicking, self).write(cr, uid, ids, vals, context=context)
+    def write(self, vals):
+        res = super(StockPicking, self).write(vals)
         if vals.get('carrier_tracking_ref'):
             _logger.info('***  %s' % vals)
             if vals.get('carrier_tracking_ref') != 'GENERATING...' and vals.get('carrier_tracking_ref'):
