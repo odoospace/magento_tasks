@@ -520,6 +520,8 @@ class magento_task(models.Model):
                 saleorder_line_data['order_id'] = o_saleorder.id
                 #saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['product_qty'] = int(float(line['qty_ordered']))
+                saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
+
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
 
                 #simple, configurable and bundle logic
