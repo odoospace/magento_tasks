@@ -10,6 +10,7 @@ from datetime import datetime, date, timedelta
 from magento import MagentoAPI
 from . import config
 import logging
+import importlib
 
 _logger = logging.getLogger(__name__)
 
@@ -299,8 +300,7 @@ class magento_task(models.Model):
     #UPDATE SALEORDERS
     @api.model
     def update_orders_from_magento(self):
-        reload(sys)
-        sys.setdefaultencoding("utf-8")
+        importlib.reload(sys)
 
         # check config and do nothing if it's missing some parameter
         if not config.domain or \
@@ -370,8 +370,7 @@ class magento_task(models.Model):
     #SYNC SALEORDERS
     @api.model
     def sync_orders_from_magento(self):
-        reload(sys)
-        sys.setdefaultencoding("utf-8")
+        importlib.reload(sys)
 
         # check config and do nothing if it's missing some parameter
         if not config.domain or \
@@ -386,7 +385,7 @@ class magento_task(models.Model):
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
 
         S_IVA_21S = self.env['account.tax'].search([('description', '=', 'S_IVA21B')])
-        PRODUCT_UOM = self.env['product.uom'].search([('id','=',1)]).id
+        #PRODUCT_UOM = self.env['product.uom'].search([('id','=',1)]).id
 
         #first get de date range to check orders
         #TODO: today minus 10 days for safe check
@@ -500,6 +499,7 @@ class magento_task(models.Model):
             saleorder_data['partner_invoice_id'] = o_billing_id
             saleorder_data['partner_shipping_id'] = o_shipping_id
             saleorder_data['date_order'] = datetime.strptime(order['created_at'], '%Y-%m-%d %H:%M:%S')
+            saleorder_data['user_id'] = 59
             #TODO: add payment_mode info to saleorder
             o_saleorder = self.env['sale.order'].create(saleorder_data)
 
@@ -515,8 +515,8 @@ class magento_task(models.Model):
                 saleorder_line_data = {}
                 saleorder_line_data['price_unit'] = 0
                 saleorder_line_data['order_id'] = o_saleorder.id
-                saleorder_line_data['product_uom'] = PRODUCT_UOM
-                saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
+                #saleorder_line_data['product_uom'] = PRODUCT_UOM
+                saleorder_line_data['product_qty'] = int(float(line['qty_ordered']))
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
 
                 #simple, configurable and bundle logic
@@ -599,9 +599,9 @@ class magento_task(models.Model):
                 saleorder_line_data = {}
                 saleorder_line_data['order_id'] = o_saleorder.id
                 saleorder_line_data['name'] = 'Contrarembolso'
-                saleorder_line_data['product_uom'] = PRODUCT_UOM
+                #saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['product_id'] = 15413 #product 'gastos de envio'
-                saleorder_line_data['product_uom_qty'] = 1
+                saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['cod_fee'])
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
@@ -609,10 +609,10 @@ class magento_task(models.Model):
             if order['shipping_amount']:
                 saleorder_line_data = {}
                 saleorder_line_data['order_id'] = o_saleorder.id
-                saleorder_line_data['product_uom'] = PRODUCT_UOM
+                #saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['name'] = 'Gastos de envio'
                 saleorder_line_data['product_id'] = 15413 #product 'gastos de envio'
-                saleorder_line_data['product_uom_qty'] = 1
+                saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['shipping_amount'])
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
@@ -639,10 +639,10 @@ class magento_task(models.Model):
             if order['discount_description']:
                 saleorder_line_data = {}
                 saleorder_line_data['order_id'] = o_saleorder.id
-                saleorder_line_data['product_uom'] = PRODUCT_UOM
+                #saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['name'] = 'Vale web - ' + order['discount_description'] 
                 saleorder_line_data['product_id'] = 16716 #product 'VALE WEB'
-                saleorder_line_data['product_uom_qty'] = 1
+                saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['discount_amount'])
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)                
@@ -650,20 +650,19 @@ class magento_task(models.Model):
             if order['money_for_points']:
                 saleorder_line_data = {}
                 saleorder_line_data['order_id'] = o_saleorder.id
-                saleorder_line_data['product_uom'] = PRODUCT_UOM
+                #saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['name'] = 'Puntos web ' + str(float(order['money_for_points'])) + ' puntos' 
                 saleorder_line_data['product_id'] = 21653 #product 'PUNTOS WEB'
-                saleorder_line_data['product_uom_qty'] = 1
+                saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['money_for_points'])
                 saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
-
+            
     #PRODUCT BRAND
     #PRODUCT BRAND
     @api.model
     def sync_brands_from_magento(self):
-        reload(sys)
-        sys.setdefaultencoding("utf-8")
+        importlib.reload(sys)
 
         # check config and do nothing if it's missing some parameter
         if not config.domain or \
@@ -701,8 +700,7 @@ class magento_task(models.Model):
     #PRODUCT CATEGORY
     @api.model
     def sync_categorys_from_magento(self):
-        reload(sys)
-        sys.setdefaultencoding("utf-8")
+        importlib.reload(sys)
 
         # check config and do nothing if it's missing some parameter
         if not config.domain or \
@@ -713,7 +711,7 @@ class magento_task(models.Model):
            return
 
         def read_children(item):
-            if item.has_key('children'):
+            if 'children' in item:
                 #print 'item', item['name'], item['category_id']
                 categories[int(item['category_id'])] = {
                     'id': int(item['category_id']),
@@ -767,8 +765,7 @@ class magento_task(models.Model):
     #PRODUCT SYNC
     @api.model
     def sync_products_from_magento(self):
-        reload(sys)
-        sys.setdefaultencoding("utf-8")
+        importlib.reload(sys)
 
         # check config and do nothing if it's missing some parameter
         if not config.domain or \
@@ -995,5 +992,3 @@ class StockInventory(models.Model):
                     #         # self.pool.get("product.template").write(inventory_line.product_id.product_tmpl_id.id, {'magento_sync': True, 'magento_sync_date': datetime.now()})
                     #         inventory_line.product_id.product_tmpl_id.write({'magento_sync': True, 'magento_sync_date': datetime.now()})
         return True
-
-                
