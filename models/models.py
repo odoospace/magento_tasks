@@ -40,10 +40,8 @@ class dict2obj(dict):
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
-
     magento_sync = fields.Boolean(string='Magento sync error')
     magento_sync_date = fields.Date(string='Sync error date')
-
 
     @api.multi
     def write(self, vals):
@@ -64,8 +62,6 @@ class ProductTemplate(models.Model):
                         mysql.connector.connect(user=config.mysqluser, password=config.mysqlpassword, host=config.mysqlhost, database=config.mysqldatabase)
                         motoscoot_db = cnx.cursor()
                         motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s;""", (vals['list_price'], int(syncid[0].source_id), 75), nodata=True)
-
-
                 if 'extra_price' in vals:
                     data['special_price'] = vals['extra_price'] or self.extra_price
                     if True:
@@ -76,9 +72,7 @@ class ProductTemplate(models.Model):
                         mysql.connector.connect(user=config.mysqluser, password=config.mysqlpassword, host=config.mysqlhost, database=config.mysqldatabase)
                         motoscoot_db = cnx.cursor()
                         motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s;""", (vals['extra_price'], int(syncid[0].source_id), 76), nodata=True)
-
                 # m.catalog_product.update(syncid[0].source_id, data)
-                
         return result
 
 
@@ -127,7 +121,6 @@ class SaleOrder(models.Model):
                         note += '\n===============================\n'
                     if item.note != note:
                         item.note = note
-
 
 # task to schedule
 class magento_task(models.Model):
@@ -840,11 +833,8 @@ class magento_task(models.Model):
                 sync_id = self.env['syncid.reference'].create(data_sync)
                 _logger.info('*** FINISH')
 
-
 #STOCK SYNC
 #STOCK SYNC
-
-
 class StockPicking(models.Model):
 
     _inherit = 'stock.picking'
@@ -872,11 +862,6 @@ class StockPicking(models.Model):
                             _logger.info('*** ++ Factura ya existente en magento!! %s' %  magento_id)
                             
         return res
-
-
-
-
-
 
 #this controls de stock.moves when working with IN/OUT picking operations
 class stock_move(models.Model):
@@ -952,7 +937,6 @@ class StockInventory(models.Model):
         """ Finish the inventory
         @return: True
         """
-
         result = super(StockInventory, self)._action_done()
         syncid_obj = self.pool.get("syncid.reference")
 
@@ -963,14 +947,6 @@ class StockInventory(models.Model):
 
             m_check = False
             m_plist = []
-            # if len(inv.line_ids) >1:
-            #     print 'Multiple sync stock inventory adjunstment...Fetching catalog for checks'
-            #     m_check = True
-            #     m_products = m.catalog_product.list()
-            #     for i in m_products:
-            #         m_plist.append(int(i['product_id']))
-            #     print 'Catalog properly fetched!'
-
 
             for inventory_line in inv.line_ids:
                 _logger.info('*** Syncing inventory_line %s/%s - %s' % (con, len(inv.line_ids), inventory_line.product_id.id))
@@ -982,17 +958,9 @@ class StockInventory(models.Model):
                     is_in_stock = '0'
                     if inventory_line.product_id.qty_available > 0:
                         is_in_stock = '1'
-
                     #add error tolerance
                     # if not m_check:
                     if product_syncid_reference:
                         #found! update it!
                         m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
-                    # else:
-                    #     if int(product_syncid_reference[0].source_id) in m_plist:
-                    #         m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
-                    #     else:
-                    #         #not found! manage error
-                    #         # self.pool.get("product.template").write(inventory_line.product_id.product_tmpl_id.id, {'magento_sync': True, 'magento_sync_date': datetime.now()})
-                    #         inventory_line.product_id.product_tmpl_id.write({'magento_sync': True, 'magento_sync_date': datetime.now()})
         return True
