@@ -943,7 +943,7 @@ class StockInventory(models.Model):
         @return: True
         """
         result = super(StockInventory, self)._action_done()
-        syncid_obj = self.pool.get("syncid.reference")
+        syncid_obj = self.env.get['syncid.reference']
 
         for inv in self.browse():
             _logger.info('*** Initiating sync stock inventory adjustment - %s to process...' % len(inv.line_ids))
