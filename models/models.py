@@ -892,7 +892,7 @@ class stock_move(models.Model):
         if destination in [19, 12, 25, 8, 9, 5]:
             print('entro destination')
             #update magento stock!
-            # m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+            m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
             con = 1
             for i in products_to_sync:
                 _logger.info('*** sync stock %s/%s - %s' % (con, len(products_to_sync), i))
@@ -907,12 +907,12 @@ class stock_move(models.Model):
                     if products_stock_dict[i] > 0:
                         is_in_stock = '1'
                     # print 'is_in_stock', is_in_stock
-                    try:
-                        m.cataloginventory_stock_item.update(product_syncid_reference.source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
-                    except:
-                        # obj = product_syncid_reference[0].object()
-                        raise UserError("Error syncing with magento! Product doesn't exist:")
-                        return True
+                    # try:
+                    m.cataloginventory_stock_item.update(product_syncid_reference.source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
+                    # except:
+                    #     # obj = product_syncid_reference[0].object()
+                    #     raise UserError("Error syncing with magento! Product doesn't exist:")
+                    #     return True
         return result
 
 #This controls the inventory adjustment
