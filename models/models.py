@@ -882,22 +882,21 @@ class stock_move(models.Model):
     _inherit = 'stock.move'
 
     #inherited method to add MAGENTO STOCK SYNC when a IN/OUT picking operation is validated
-    def action_done(self, cr, uid, ids, context=None):
+    def _action_done(self):
         _logger.info('*** entering stock_move action_dome - magento update')
 
-        result = super(stock_move, self).action_done(cr, uid, ids,
-                                                        context=context)
+        result = super(stock_move, self)._action_done()
         destination = 0
         products_to_sync = []
         products_stock_dict = {}
-        for move in self.browse(cr, uid, ids, context=context):
+        for move in self.browse():
             if move.picking_id:
                 destination = move.picking_id.location_dest_id.id
                 products_to_sync.append(move.product_id.product_tmpl_id.id)
                 products_stock_dict[move.product_id.product_tmpl_id.id] = move.product_id.qty_available
 
-        syncid_obj = self.pool.get("syncid.reference")
-        product_obj = self.pool.get("product.product")
+        syncid_obj = self.env['syncid.reference']
+        product_obj = self.env['product.product']
         
         if destination in [19, 12, 25, 8, 9, 5]:
             #update magento stock!
@@ -907,9 +906,9 @@ class stock_move(models.Model):
                 _logger.info('*** sync stock %s/%s - %s' % (con, len(products_to_sync), i))
                 con +=1
                 domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,i)]
-                product_syncid_references = syncid_obj.search(cr, uid, domain, context=context)
+                product_syncid_references = syncid_obj.search(domain)
                 if product_syncid_references:
-                    product_syncid_reference = syncid_obj.browse(cr, uid, product_syncid_references, context=context)
+                    product_syncid_reference = syncid_obj.browse(product_syncid_references)
                     is_in_stock = '0'
                     # print product_syncid_reference[0].source_id, products_stock_dict[i]
                     if products_stock_dict[i] > 0:
@@ -947,15 +946,15 @@ class StockInventory(models.Model):
         raise exceptions.Warning(error_msg + error_sync + error_mag)
 
     #inherited method to add MAGENTO STOCK SYNC when a Inventory Adjustments is validated
-    def action_done(self, cr, uid, ids, context=None):
+    def _action_done(self):
         """ Finish the inventory
         @return: True
         """
 
-        result = super(StockInventory, self).action_done(cr, uid, ids, context=context)
+        result = super(StockInventory, self)._action_done()
         syncid_obj = self.pool.get("syncid.reference")
 
-        for inv in self.browse(cr, uid, ids, context=context):
+        for inv in self.browse():
             _logger.info('*** Initiating sync stock inventory adjustment - %s to process...' % len(inv.line_ids))
             con = 1
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
@@ -975,9 +974,9 @@ class StockInventory(models.Model):
                 _logger.info('*** Syncing inventory_line %s/%s - %s' % (con, len(inv.line_ids), inventory_line.product_id.id))
                 con +=1
                 domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,inventory_line.product_id.product_tmpl_id.id)]
-                product_syncid_references = syncid_obj.search(cr, uid, domain, context=context)
+                product_syncid_references = syncid_obj.search(domain)
                 if product_syncid_references:
-                    product_syncid_reference = syncid_obj.browse(cr, uid, product_syncid_references, context=context)
+                    product_syncid_reference = syncid_obj.browse(product_syncid_references)
                     is_in_stock = '0'
                     if inventory_line.product_id.qty_available > 0:
                         is_in_stock = '1'
