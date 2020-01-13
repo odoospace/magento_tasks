@@ -61,7 +61,7 @@ class ProductTemplate(models.Model):
                         # motoscoot_db = self.env['base.external.dbsource'].search([('name', '=', database)])
                         cnx = mysql.connector.connect(user=config.mysqluser, password=config.mysqlpassword, host=config.mysqlhost, database=config.mysqldatabase)
                         motoscoot_db = cnx.cursor()
-                        motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s;""", (vals['list_price'], int(syncid[0].source_id), 75), nodata=True)
+                        motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s;""", (vals['list_price'], int(syncid[0].source_id), 75))
                         cnx.close()
                 if 'extra_price' in vals:
                     data['special_price'] = vals['extra_price'] or self.extra_price
@@ -72,7 +72,7 @@ class ProductTemplate(models.Model):
                         # motoscoot_db = self.env['base.external.dbsource'].search([('name', '=', database)])
                         cnx = mysql.connector.connect(user=config.mysqluser, password=config.mysqlpassword, host=config.mysqlhost, database=config.mysqldatabase)
                         motoscoot_db = cnx.cursor()
-                        motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s;""", (vals['extra_price'], int(syncid[0].source_id), 76), nodata=True)
+                        motoscoot_db.execute("""update catalog_product_entity_decimal set value = %s where entity_id=%s and attribute_id=%s;""", (vals['extra_price'], int(syncid[0].source_id), 76))
                         cnx.close()
                 # m.catalog_product.update(syncid[0].source_id, data)
         return result
