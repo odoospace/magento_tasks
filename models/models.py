@@ -876,7 +876,9 @@ class stock_move(models.Model):
         destination = 0
         products_to_sync = []
         products_stock_dict = {}
-        for move in self.browse():
+        print(result)
+        for move in result:
+            print('for move in self.browse')
             if move.picking_id:
                 destination = move.picking_id.location_dest_id.id
                 products_to_sync.append(move.product_id.product_tmpl_id.id)
@@ -886,6 +888,7 @@ class stock_move(models.Model):
         product_obj = self.env['product.product']
         
         if destination in [19, 12, 25, 8, 9, 5]:
+            print('entro destination')
             #update magento stock!
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
             con = 1
