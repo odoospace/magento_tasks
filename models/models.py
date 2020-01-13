@@ -892,7 +892,7 @@ class stock_move(models.Model):
         if destination in [19, 12, 25, 8, 9, 5]:
             print('entro destination')
             #update magento stock!
-            m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+            # m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
             con = 1
             for i in products_to_sync:
                 _logger.info('*** sync stock %s/%s - %s' % (con, len(products_to_sync), i))
@@ -900,17 +900,18 @@ class stock_move(models.Model):
                 domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,i)]
                 product_syncid_references = syncid_obj.search(domain)
                 if product_syncid_references:
-                    product_syncid_reference = syncid_obj.browse(product_syncid_references)
+                    product_syncid_reference = product_syncid_references[0]
+                    print(product_syncid_references, product_syncid_reference, product_syncid_reference.source_id)
                     is_in_stock = '0'
                     # print product_syncid_reference[0].source_id, products_stock_dict[i]
                     if products_stock_dict[i] > 0:
                         is_in_stock = '1'
                     # print 'is_in_stock', is_in_stock
                     try:
-                        m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
+                        m.cataloginventory_stock_item.update(product_syncid_reference.source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
                     except:
-                        obj = product_syncid_reference[0].object()
-                        raise UserError("Error syncing with magento! Product doesn't exist: %s - %s" % (obj.name, obj.default_code))
+                        # obj = product_syncid_reference[0].object()
+                        raise UserError("Error syncing with magento! Product doesn't exist:")
                         return True
         return result
 
@@ -959,7 +960,7 @@ class StockInventory(models.Model):
                 domain = [('model', '=', 190), ('source', '=', 1), ('odoo_id', '=' ,inventory_line.product_id.product_tmpl_id.id)]
                 product_syncid_references = syncid_obj.search(domain)
                 if product_syncid_references:
-                    product_syncid_reference = syncid_obj.browse(product_syncid_references)
+                    product_syncid_reference = product_syncid_references[0]
                     is_in_stock = '0'
                     if inventory_line.product_id.qty_available > 0:
                         is_in_stock = '1'
@@ -967,5 +968,5 @@ class StockInventory(models.Model):
                     # if not m_check:
                     if product_syncid_reference:
                         #found! update it!
-                        m.cataloginventory_stock_item.update(product_syncid_reference[0].source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
+                        m.cataloginventory_stock_item.update(product_syncid_reference.source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
         return True
