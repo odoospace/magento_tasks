@@ -848,7 +848,7 @@ class StockPicking(models.Model):
         if vals.get('carrier_tracking_ref'):
             _logger.info('***  %s' % vals)
             if vals.get('carrier_tracking_ref') != 'GENERATING...' and vals.get('carrier_tracking_ref'):
-                for i in self.browse():
+                for i in self:
                     if i.origin and 'MAG' in i.origin and not i.carrier_file_generated:
                         _logger.info('*** Adding tracking to Magento Order... %s' % i.origin)
                         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
