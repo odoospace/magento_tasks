@@ -129,6 +129,7 @@ class SaleOrder(models.Model):
 # task to schedule
 class magento_task(models.Model):
     _name = 'magento.task'
+    _description = 'Module to manage magento tasks'
 
     #SALEORDERS
     #SALEORDERS
