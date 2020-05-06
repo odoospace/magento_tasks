@@ -622,7 +622,10 @@ class magento_task(models.Model):
 
             #adding payment_mode_id
             if order['payment']:
-                payment_method = self.env['account.payment.mode'].search([('name','=', order['payment']['method'])])
+                if order['payment']['method'] == 'realvault':
+                    payment_method = self.env['account.payment.mode'].search([('name','=', 'realexredirect')])
+                else:
+                    payment_method = self.env['account.payment.mode'].search([('name','=', order['payment']['method'])])
                 # print payment_method, order['payment']['method']
                 if payment_method:
                     o_saleorder.payment_mode_id = payment_method[0]
