@@ -432,9 +432,16 @@ class magento_task(models.Model):
             #fetching order info
             order = m.sales_order.info({'increment_id': i[4:]})
 
+            #manual override of specific order uncomment if necesary
+            # if i[4:] == '100150732':
+            #     _logger.info('*** Excluding... %s' % i)
+            #     continue
+
             #checking partner, invoice address and shipping address
             #if not exist on odoo, create it!
-
+            if order['state'] == 'new':
+                if not order['customer_id']:
+                    continue
             #TODO:partner
             m_customer_id = order['customer_id']
             #new clients hack to prevent bad assign while cleaning
@@ -876,6 +883,11 @@ class stock_move(models.Model):
     
     _inherit = 'stock.move'
 
+    msync = fields.Boolean('msync', default=False)
+
+
+
+
     #inherited method to add MAGENTO STOCK SYNC when a IN/OUT picking operation is validated
     def _action_done(self):
         _logger.info('*** entering stock_move action_dome - magento update')
@@ -883,17 +895,18 @@ class stock_move(models.Model):
         result = super(stock_move, self)._action_done()
         destination = 0
         products_to_sync = []
+        products_to_sync_moves = {}
         products_stock_dict = {}
         print(result)
         for move in result:
             print('for move in self.browse')
-            if move.picking_id:
+            if move.picking_id and not move.msync:
                 destination = move.picking_id.location_dest_id.id
                 products_to_sync.append(move.product_id.product_tmpl_id.id)
+                products_to_sync_moves[move.product_id.product_tmpl_id.id] = move
                 products_stock_dict[move.product_id.product_tmpl_id.id] = move.product_id.qty_available
 
         syncid_obj = self.env['syncid.reference']
-        product_obj = self.env['product.product']
         
         if destination in [19, 12, 25, 8, 9, 5]:
             print('entro destination')
@@ -909,16 +922,13 @@ class stock_move(models.Model):
                     product_syncid_reference = product_syncid_references[0]
                     print(product_syncid_references, product_syncid_reference, product_syncid_reference.source_id)
                     is_in_stock = '0'
-                    # print product_syncid_reference[0].source_id, products_stock_dict[i]
                     if products_stock_dict[i] > 0:
                         is_in_stock = '1'
-                    # print 'is_in_stock', is_in_stock
-                    # try:
+
                     m.cataloginventory_stock_item.update(product_syncid_reference.source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
-                    # except:
-                    #     # obj = product_syncid_reference[0].object()
-                    #     raise UserError("Error syncing with magento! Product doesn't exist:")
-                    #     return True
+                    products_to_sync_moves[i].msync = True
+                    self.env.cr.commit()
+
         return result
 
 #This controls the inventory adjustment
