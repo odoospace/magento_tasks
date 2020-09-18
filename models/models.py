@@ -883,7 +883,7 @@ class stock_move(models.Model):
     
     _inherit = 'stock.move'
 
-    msync = fields.Boolean('msync', default=False)
+    msync = fields.Boolean('msync', default=False, copy=False)
 
 
 
