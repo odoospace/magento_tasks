@@ -907,7 +907,7 @@ class stock_move(models.Model):
                 products_stock_dict[move.product_id.product_tmpl_id.id] = move.product_id.qty_available
 
         syncid_obj = self.env['syncid.reference']
-        
+        _logger.info(products_to_sync) 
         if destination in [19, 12, 25, 8, 9, 5]:
             print('entro destination')
             #update magento stock!
