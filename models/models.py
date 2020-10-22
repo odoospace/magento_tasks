@@ -253,11 +253,13 @@ class magento_task(models.Model):
         
         else:
             address_data['id'] = address_id
-            res = self.env['res.partner'].write(address_data)
+            o_rp = self.env['res.partner'].browse(address_id)
+            o_rp.write(address_data)
+            # res = self.env['res.partner'].write(address_data)
 
         self.env.cr.commit()
 
-        return address_id or res
+        return address_id# or res
 
     @api.model
     def create_partner(self, data, scope=None):
@@ -465,6 +467,7 @@ class magento_task(models.Model):
                         o_billing_id = self.create_partner_address(order['billing_address'], o_customer_id, 'create', None, 'billing').id
                 else:
                     o_billing_id = o_customer_id
+
                 #TODO:shipping
                 m_shipping_addess_id = order['shipping_address']['customer_address_id']
                 if m_shipping_addess_id != None:
