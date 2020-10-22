@@ -963,6 +963,8 @@ class StockInventory(models.Model):
         syncid_obj = self.env['syncid.reference']
 
         for inv in self:
+            if inv.location_id in [1770]:
+                continue
             _logger.info('*** Initiating sync stock inventory adjustment - %s to process...' % len(inv.line_ids))
             con = 1
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
