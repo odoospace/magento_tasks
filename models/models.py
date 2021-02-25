@@ -530,7 +530,7 @@ class magento_task(models.Model):
                 saleorder_line_data['product_qty'] = int(float(line['qty_ordered']))
                 saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
 
-                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
+                saleorder_line_data['tax_id'] = [(6, 0, [1])]
 
                 #simple, configurable and bundle logic
                 
@@ -928,7 +928,7 @@ class stock_move(models.Model):
                     if products_stock_dict[i] > 0:
                         is_in_stock = '1'
 
-                    m.cataloginventory_stock_item.update(product_syncid_reference.source_id, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
+                    m.cataloginventory_stock_item.update({'product_id':product_syncid_reference.source_id}, {'qty':str(products_stock_dict[i]),'is_in_stock':is_in_stock})
                     products_to_sync_moves[i].msync = True
                     self.env.cr.commit()
 
@@ -989,5 +989,6 @@ class StockInventory(models.Model):
                     # if not m_check:
                     if product_syncid_reference:
                         #found! update it!
-                        m.cataloginventory_stock_item.update(product_syncid_reference.source_id, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
+                        m.cataloginventory_stock_item.update({'product_id':product_syncid_reference.source_id}, {'qty':str(inventory_line.product_id.qty_available),'is_in_stock':is_in_stock})
         return True
+        
