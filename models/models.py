@@ -126,6 +126,53 @@ class SaleOrder(models.Model):
                     if item.note != note:
                         item.note = note
 
+    @api.multi
+    def check_magento_order_data(self):
+        _logger.info('*** Chequing Magento Order Data')
+        m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
+        error = ''
+        errors_shipping = 'Shipping address errors:\n'
+        errors_billing = '\nBilling address errors:\n'
+        if 'MAG' in self.name:
+            magento_id = self.name[4:]
+            order = m.sales_order.info({'increment_id': magento_id})
+            if order:
+                #checking shipping_address:
+                if 'shipping_address' in order:
+                    name = ('%s %s' % (order['shipping_address']['firstname'], order['shipping_address']['lastname']))
+                    if self.partner_shipping_id.name != name:
+                        errors_shipping += ('\n name mismatch! odoo: %s magento: %s' % (self.partner_shipping_id.name, order['shipping_address']['firstname']))
+                    if self.partner_shipping_id.street != order['shipping_address']['street'].replace('\n', ' '):
+                        errors_shipping += ('\n street mismatch! odoo: %s magento: %s' % (self.partner_shipping_id.street, order['shipping_address']['street']))
+                    if self.partner_shipping_id.zip != order['shipping_address']['postcode']:
+                        errors_shipping += ('\n zip mismatch! odoo: %s magento: %s' % (self.partner_shipping_id.zip, order['shipping_address']['postcode']))
+                    if self.partner_shipping_id.city != order['shipping_address']['city']:
+                        errors_shipping += ('\n city mismatch! odoo: %s magento: %s' % (self.partner_shipping_id.city, order['shipping_address']['city']))
+                else:
+                    errors_shipping += 'Missing magento shipping address!\n'
+                if 'billing_address' in order:
+                    name = ('%s %s' % (order['billing_address']['firstname'], order['billing_address']['lastname']))
+                    if self.partner_invoice_id.name != name:
+                        errors_billing += ('\n name mismatch! odoo: %s magento: %s' % (self.partner_invoice_id.name, order['billing_address']['firstname']))
+                    if self.partner_invoice_id.street != order['billing_address']['street'].replace('\n', ' '):
+                        errors_billing += ('\n street mismatch! odoo: %s magento: %s' % (self.partner_invoice_id.street, order['billing_address']['street']))
+                    if self.partner_invoice_id.zip != order['billing_address']['postcode']:
+                        errors_billing += ('\n zip mismatch! odoo: %s magento: %s' % (self.partner_invoice_id.zip, order['billing_address']['postcode'])) 
+                    if self.partner_invoice_id.city != order['billing_address']['city']:
+                        errors_billing += ('\n city mismatch! odoo: %s magento: %s' % (self.partner_shipping_id.city, order['billing_address']['city']))      
+                else:
+                    errors_billing += 'Missing magento billing address!\n'
+            else:
+                error += 'MAGENTO ORDER NOT FOUND!\n'
+        else:
+            error += 'MAGENTO ORDER NOT FOUND!\n'
+
+        raise exceptions.Warning(error + '\n' + errors_shipping + '\n' + errors_billing)
+  
+
+                
+
+
 # task to schedule
 class magento_task(models.Model):
     _name = 'magento.task'
@@ -253,13 +300,15 @@ class magento_task(models.Model):
         
         else:
             address_data['id'] = address_id
-            o_rp = self.env['res.partner'].browse(address_id)
-            o_rp.write(address_data)
-            # res = self.env['res.partner'].write(address_data)
+            res = self.env['res.partner'].write(address_data)
+            #maybe use this sometime in the future
+            # o_rp = self.env['res.partner'].browse(address_id)
+            # o_rp.write(address_data)
+            
 
         self.env.cr.commit()
 
-        return address_id# or res
+        return address_id or res #check commit da511f4ab1...
 
     @api.model
     def create_partner(self, data, scope=None):
@@ -613,10 +662,10 @@ class magento_task(models.Model):
                 saleorder_line_data['order_id'] = o_saleorder.id
                 saleorder_line_data['name'] = 'Contrarembolso'
                 #saleorder_line_data['product_uom'] = PRODUCT_UOM
-                saleorder_line_data['product_id'] = 15413 #product 'gastos de envio'
+                saleorder_line_data['product_id'] = 64456 #15413 #product 'gastos de envio'
                 saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['cod_fee'])
-                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
+                saleorder_line_data['tax_id'] = [(6, 0, [1])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
             if order['shipping_amount']:
@@ -624,10 +673,10 @@ class magento_task(models.Model):
                 saleorder_line_data['order_id'] = o_saleorder.id
                 #saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['name'] = 'Gastos de envio'
-                saleorder_line_data['product_id'] = 15413 #product 'gastos de envio'
+                saleorder_line_data['product_id'] = 64456 #15413 #product 'gastos de envio'
                 saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['shipping_amount'])
-                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
+                saleorder_line_data['tax_id'] = [(6, 0, [1])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
             #adding payment_mode_id
@@ -660,7 +709,7 @@ class magento_task(models.Model):
                 saleorder_line_data['product_id'] = 16716 #product 'VALE WEB'
                 saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['discount_amount'])
-                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
+                saleorder_line_data['tax_id'] = [(6, 0, [1])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)                
 
             if order['money_for_points']:
@@ -671,7 +720,7 @@ class magento_task(models.Model):
                 saleorder_line_data['product_id'] = 21653 #product 'PUNTOS WEB'
                 saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['money_for_points'])
-                saleorder_line_data['tax_id'] = [(6, 0, [S_IVA_21S.id])]
+                saleorder_line_data['tax_id'] = [(6, 0, [1])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
             
     #PRODUCT BRAND
