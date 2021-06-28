@@ -706,7 +706,7 @@ class magento_task(models.Model):
                 saleorder_line_data['order_id'] = o_saleorder.id
                 #saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['name'] = 'Vale web - ' + order['discount_description'] 
-                saleorder_line_data['product_id'] = 16716 #product 'VALE WEB'
+                saleorder_line_data['product_id'] = 64659 #16716 #product 'VALE WEB'
                 saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['discount_amount'])
                 saleorder_line_data['tax_id'] = [(6, 0, [1])]
@@ -717,7 +717,7 @@ class magento_task(models.Model):
                 saleorder_line_data['order_id'] = o_saleorder.id
                 #saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['name'] = 'Puntos web ' + str(float(order['money_for_points'])) + ' puntos' 
-                saleorder_line_data['product_id'] = 21653 #product 'PUNTOS WEB'
+                saleorder_line_data['product_id'] = 64595 #21653 #product 'PUNTOS WEB'
                 saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['money_for_points'])
                 saleorder_line_data['tax_id'] = [(6, 0, [1])]
