@@ -420,6 +420,21 @@ class magento_task(models.Model):
 
     #SYNC SALEORDERS
     #SYNC SALEORDERS
+
+    #OSS STUFF
+    def detect_oss_fiscal_position(self, country_id, order_lines):
+        for line in order_lines:
+            if line['tax_percent'] == '0.0000':
+                return 2, False #intra
+        oss_fiscal_position = self.env['account.fiscal.position'].search([
+            ('country_id', '=', country_id),
+            ('name', 'like', 'Intra-EU B2C')
+        ])
+        if oss_fiscal_position:
+            return oss_fiscal_position[0].id, oss_fiscal_position[0].tax_ids[0].tax_dest_id.id
+
+                    
+
     @api.model
     def sync_orders_from_magento(self):
         importlib.reload(sys)
@@ -561,7 +576,20 @@ class magento_task(models.Model):
             saleorder_data['date_order'] = datetime.strptime(order['created_at'], '%Y-%m-%d %H:%M:%S')
             saleorder_data['user_id'] = 59
             #TODO: add payment_mode info to saleorder
+
+            #detect OSS fiscal position
+            euro_tax_id = False
+            GLOBAL_TAX_ID = 1
+            if o_customer_id.country_id and o_customer_id.country_id.id in [
+                13, 21, 23, 56, 57, 58, 60, 65, 89, 71, 76, 98, 100, 102, 110, 
+                133, 134, 135, 153, 166, 180, 185, 190, 198, 201, 203 ]:#OSS EUROZONE
+                fiscal_position_id, euro_tax_id = self.detect_oss_fiscal_position(o_customer_id.country_id.id, order['items'])
+                saleorder_data['fiscal_position_id'] = fiscal_position_id
+            if euro_tax_id:
+                GLOBAL_TAX_ID = euro_tax_id
+
             o_saleorder = self.env['sale.order'].create(saleorder_data)
+
 
             #Create sale order lines data:            
             bundle_product = None
@@ -578,8 +606,7 @@ class magento_task(models.Model):
                 #saleorder_line_data['product_uom'] = PRODUCT_UOM
                 saleorder_line_data['product_qty'] = int(float(line['qty_ordered']))
                 saleorder_line_data['product_uom_qty'] = int(float(line['qty_ordered']))
-
-                saleorder_line_data['tax_id'] = [(6, 0, [1])]
+                saleorder_line_data['tax_id'] = [(6, 0, [GLOBAL_TAX_ID])]
 
                 #simple, configurable and bundle logic
                 
@@ -665,7 +692,7 @@ class magento_task(models.Model):
                 saleorder_line_data['product_id'] = 64456 #15413 #product 'gastos de envio'
                 saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['cod_fee'])
-                saleorder_line_data['tax_id'] = [(6, 0, [1])]
+                saleorder_line_data['tax_id'] = [(6, 0, [GLOBAL_TAX_ID])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
             if order['shipping_amount']:
@@ -676,7 +703,7 @@ class magento_task(models.Model):
                 saleorder_line_data['product_id'] = 64456 #15413 #product 'gastos de envio'
                 saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['shipping_amount'])
-                saleorder_line_data['tax_id'] = [(6, 0, [1])]
+                saleorder_line_data['tax_id'] = [(6, 0, [GLOBAL_TAX_ID])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
             #adding payment_mode_id
@@ -709,7 +736,7 @@ class magento_task(models.Model):
                 saleorder_line_data['product_id'] = 64659 #16716 #product 'VALE WEB'
                 saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['discount_amount'])
-                saleorder_line_data['tax_id'] = [(6, 0, [1])]
+                saleorder_line_data['tax_id'] = [(6, 0, [GLOBAL_TAX_ID])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)                
 
             if order['money_for_points']:
@@ -720,7 +747,7 @@ class magento_task(models.Model):
                 saleorder_line_data['product_id'] = 64595 #21653 #product 'PUNTOS WEB'
                 saleorder_line_data['product_qty'] = 1
                 saleorder_line_data['price_unit'] = float(order['money_for_points'])
-                saleorder_line_data['tax_id'] = [(6, 0, [1])]
+                saleorder_line_data['tax_id'] = [(6, 0, [GLOBAL_TAX_ID])]
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
             
     #PRODUCT BRAND
