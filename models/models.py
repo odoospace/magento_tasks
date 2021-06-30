@@ -580,10 +580,11 @@ class magento_task(models.Model):
             #detect OSS fiscal position
             euro_tax_id = False
             GLOBAL_TAX_ID = 1
-            if o_customer_id.country_id and o_customer_id.country_id.id in [
+            euro_customer_id = self.env['res.partner'].browse(o_customer_id)
+            if euro_customer_id.country_id and euro_customer_id.country_id.id in [
                 13, 21, 23, 56, 57, 58, 60, 65, 89, 71, 76, 98, 100, 102, 110, 
                 133, 134, 135, 153, 166, 180, 185, 190, 198, 201, 203 ]:#OSS EUROZONE
-                fiscal_position_id, euro_tax_id = self.detect_oss_fiscal_position(o_customer_id.country_id.id, order['items'])
+                fiscal_position_id, euro_tax_id = self.detect_oss_fiscal_position(euro_customer_id.country_id.id, order['items'])
                 saleorder_data['fiscal_position_id'] = fiscal_position_id
             if euro_tax_id:
                 GLOBAL_TAX_ID = euro_tax_id
