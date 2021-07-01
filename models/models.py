@@ -425,7 +425,7 @@ class magento_task(models.Model):
     def detect_oss_fiscal_position(self, country_id, order_lines):
         for line in order_lines:
             if line['tax_percent'] == '0.0000':
-                return 2, False #intra
+                return 2, 80 #intra 0 exent
         oss_fiscal_position = self.env['account.fiscal.position'].search([
             ('country_id', '=', country_id),
             ('name', 'like', 'Intra-EU B2C')
