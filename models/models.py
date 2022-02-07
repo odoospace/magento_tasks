@@ -43,7 +43,6 @@ class ProductTemplate(models.Model):
     magento_sync = fields.Boolean(string='Magento sync error')
     magento_sync_date = fields.Date(string='Sync error date')
 
-    @api.multi
     def write(self, vals):
         result = super(ProductTemplate, self).write(vals)
 
@@ -83,7 +82,6 @@ class ProductTemplate(models.Model):
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    @api.multi
     def action_cancel(self):
         if 'MAG' in self.name and self.state == 'draft':
             _logger.info('*** Canceling Magento Order...')
@@ -95,7 +93,6 @@ class SaleOrder(models.Model):
                     order = m.sales_order.cancel(magento_id)
         self.write({'state': 'cancel'})
 
-    @api.multi
     def action_confirm(self):
         res = super(SaleOrder, self).action_confirm()
         if 'MAG' in self.name and self.state == 'sale':
@@ -103,7 +100,6 @@ class SaleOrder(models.Model):
             magento_id = self.name[4:]
             order = m.sales_order.addComment(magento_id, 'processing', 'En proceso')
 
-    @api.multi
     def update_magento_orders(self):
         _logger.info('*** Updating Magento Orders from tree view')
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
@@ -126,7 +122,6 @@ class SaleOrder(models.Model):
                     if item.note != note:
                         item.note = note
 
-    @api.multi
     def check_magento_order_data(self):
         _logger.info('*** Chequing Magento Order Data')
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
@@ -180,7 +175,6 @@ class magento_task(models.Model):
 
     #SALEORDERS
     #SALEORDERS
-    @api.model
     def get_bom_product(self, product_ids):
         res = None
         product_ids.sort()
@@ -194,7 +188,6 @@ class magento_task(models.Model):
                 break
         return res
 
-    @api.model
     def create_syncid_data(self, odoo_id, magento_id, scope=None):
         syncid_data = {}
         syncid_data['model'] = 80 #res.partner model
@@ -204,7 +197,6 @@ class magento_task(models.Model):
         syncid_data['scope'] = scope
         res = self.env['syncid.reference'].create(syncid_data)
 
-    @api.model
     def create_partner_address(self, data, partner_id, mode, address_id=None, scope=None):
         #method to create a delivery or invoice address given magento address data
         
@@ -310,7 +302,6 @@ class magento_task(models.Model):
 
         return address_id or res #check commit da511f4ab1...
 
-    @api.model
     def create_partner(self, data, scope=None):
         #method to create basic partner data
         #TODO: maybe add more accurate data in address
@@ -350,7 +341,6 @@ class magento_task(models.Model):
 
     #UPDATE SALEORDERS
     #UPDATE SALEORDERS
-    @api.model
     def update_orders_from_magento(self):
         importlib.reload(sys)
 
@@ -435,7 +425,6 @@ class magento_task(models.Model):
 
                     
 
-    @api.model
     def sync_orders_from_magento(self):
         importlib.reload(sys)
 
@@ -753,7 +742,6 @@ class magento_task(models.Model):
             
     #PRODUCT BRAND
     #PRODUCT BRAND
-    @api.model
     def sync_brands_from_magento(self):
         importlib.reload(sys)
 
@@ -791,7 +779,6 @@ class magento_task(models.Model):
 
     #PRODUCT CATEGORY
     #PRODUCT CATEGORY
-    @api.model
     def sync_categorys_from_magento(self):
         importlib.reload(sys)
 
@@ -856,7 +843,6 @@ class magento_task(models.Model):
             
     #PRODUCT SYNC
     #PRODUCT SYNC
-    @api.model
     def sync_products_from_magento(self):
         importlib.reload(sys)
 
@@ -1016,7 +1002,6 @@ class StockInventory(models.Model):
 
     _inherit = "stock.inventory"
 
-    @api.multi
     def check_products(self):
         m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
         error_msg = 'Products not found in sync table:\n'

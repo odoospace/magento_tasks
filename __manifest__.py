@@ -33,7 +33,7 @@
     # Check https://github.com/odoo/odoo/blob/master/openerp/addons/base/module/module_data.xml
     # for the full list
     'category': 'Association',
-    'version': '0.0.2.9',
+    'version': '14.0.0.2.9',
 
     # any module necessary for this one to work correctly
     'depends': ['sale', 'account', 'base', 'stock', 'syncid'],
