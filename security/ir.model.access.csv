@@ -1,2 +1,2 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_magento_tasks_magento_tasks,magento_tasks.magento_tasks,model_magento_tasks_magento_tasks,,1,0,0,0
+access_magento_task,access_magento_task,model_magento_task,base.group_user,1,0,0,0
