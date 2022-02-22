@@ -263,7 +263,7 @@ class magento_task(models.Model):
         address_data['phone'] = data['telephone']
         address_data['email'] = data['email']
         address_data['active'] = True
-        address_data['customer'] = False
+        # address_data['customer'] = False
         address_data['parent_id'] = partner_id
         country = self.env['res.country'].search([('code', '=', data['country_id'])])
         if country:
@@ -324,7 +324,7 @@ class magento_task(models.Model):
         address_data['phone'] = data['billing_address']['telephone']
         address_data['email'] = data['customer_email']
         address_data['active'] = True
-        address_data['customer'] = True
+        # address_data['customer'] = True
         address_data['category_id'] = [(6, 0, [customer_tags[data['customer_group_id']]])]
 
         # if 'vat_id' in data['billing_address']:
@@ -824,7 +824,7 @@ class magento_task(models.Model):
             if not reference:
                 data = {
                     'name': categories[i]['name'],
-                    'active': True,
+                    # 'active': True,
                 }
                 if categories[i]['parent']:
                     data['parent_id'] = self.env['syncid.reference'].search([('model', '=', 184), ('source', '=', 1), ('source_id', '=', categories[i]['parent'])])[0].odoo_id
@@ -896,6 +896,7 @@ class magento_task(models.Model):
                     'extra_price': pp['special_price'],
                     'categ_ids': categ_ids,
                     'categ_id': categ_id or 1,
+                    'inventory_availability': 'always',
                 }
 
                 if pp['manufacturer']:
@@ -1027,7 +1028,7 @@ class StockInventory(models.Model):
         syncid_obj = self.env['syncid.reference']
 
         for inv in self:
-            if inv.location_id in [1770]:
+            if 1770 in inv.location_ids.ids:
                 continue
             _logger.info('*** Initiating sync stock inventory adjustment - %s to process...' % len(inv.line_ids))
             con = 1
