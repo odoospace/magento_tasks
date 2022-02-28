@@ -460,7 +460,7 @@ class magento_task(models.Model):
                 order = m.sales_order.info({'increment_id': i['increment_id']})
                 if order:
                     if order['payment']:
-                        if order['payment']['method'] == 'paypal_standard':
+                        if order['payment']['method'] in ['paypal_standard', 'mbway']:
                             m_orders_list.append('MAG-'+i['increment_id'])
             elif i['state'] in ['complete'] and i['status'] in ['processing']:
                 order = m.sales_order.info({'increment_id': i['increment_id']})
