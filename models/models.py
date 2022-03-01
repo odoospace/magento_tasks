@@ -82,6 +82,7 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     def action_cancel(self):
+        res = super(SaleOrder, self).action_cancel()
         if 'MAG' in self.name and self.state == 'draft':
             _logger.info('*** Canceling Magento Order...')
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
@@ -91,6 +92,8 @@ class SaleOrder(models.Model):
                 if order['status'] != 'canceled':
                     order = m.sales_order.cancel(magento_id)
         self.write({'state': 'cancel'})
+        return res
+
 
     def action_confirm(self):
         res = super(SaleOrder, self).action_confirm()
@@ -98,6 +101,7 @@ class SaleOrder(models.Model):
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
             magento_id = self.name[4:]
             order = m.sales_order.addComment(magento_id, 'processing', 'En proceso')
+        return res
 
     def update_magento_orders(self):
         _logger.info('*** Updating Magento Orders from tree view')
