@@ -83,7 +83,7 @@ class SaleOrder(models.Model):
 
     def action_cancel(self):
         res = super(SaleOrder, self).action_cancel()
-        if 'MAG' in self.name and self.state == 'draft':
+        if 'MAG' in self.name:# and self.state == 'draft':
             _logger.info('*** Canceling Magento Order...')
             m = MagentoAPI(config.domain, config.port, config.user, config.key, proto=config.protocol)
             magento_id = self.name[4:]
