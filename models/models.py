@@ -90,7 +90,10 @@ class SaleOrder(models.Model):
             order = m.sales_order.info(magento_id)
             if order:
                 if order['status'] != 'canceled':
-                    order = m.sales_order.cancel(magento_id)
+		    try:
+                    	order = m.sales_order.cancel(magento_id)
+		    except:
+			_logger.info('*** Canceling Magento Order Error!...')
         self.write({'state': 'cancel'})
         return res
 
