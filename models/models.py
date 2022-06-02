@@ -904,6 +904,7 @@ class magento_task(models.Model):
                     'categ_ids': categ_ids,
                     'categ_id': categ_id or 1,
                     'inventory_availability': 'always',
+                    'weight': pp['weight'],
                 }
 
                 if pp['manufacturer']:
