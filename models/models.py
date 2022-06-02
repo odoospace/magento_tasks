@@ -591,6 +591,7 @@ class magento_task(models.Model):
             bundle_product = None
             to_ignore = []
             configurable = {}
+            done = True
             for line in order['items']:
 
                 if line['item_id'] in to_ignore:
@@ -664,6 +665,9 @@ class magento_task(models.Model):
                 
 
                 product = self.env['product.product'].search([('default_code', '=', line['sku']),('active','=',True)])
+                if len(prodcut) > 1:
+                    done = False
+                    continue
                 if product:
                     saleorder_line_data['product_id'] = product.id
                     if product.default_code:
@@ -678,7 +682,10 @@ class magento_task(models.Model):
                 
                 o_saleorder_line = self.env['sale.order.line'].create(saleorder_line_data)
 
-
+            if not done:
+                print('Problem with order.')
+                continue
+                
             #check cod_fee & shipment fee and add it as products
             if order['cod_fee']:
                 saleorder_line_data = {}
