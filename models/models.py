@@ -665,7 +665,7 @@ class magento_task(models.Model):
                 
 
                 product = self.env['product.product'].search([('default_code', '=', line['sku']),('active','=',True)])
-                if len(prodcut) > 1:
+                if len(product) > 1:
                     done = False
                     continue
                 if product:
@@ -685,7 +685,7 @@ class magento_task(models.Model):
             if not done:
                 print('Problem with order.')
                 continue
-                
+
             #check cod_fee & shipment fee and add it as products
             if order['cod_fee']:
                 saleorder_line_data = {}
